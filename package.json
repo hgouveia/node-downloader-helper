@@ -1,0 +1,28 @@
+{
+  "name": "node-download-helper",
+  "version": "1.0.0",
+  "description": "A simple http file downloader for node.js",
+  "main": "./dist/index.js",
+  "scripts": {
+    "start": "node ./example/index.js",
+    "lint": "./node_modules/.bin/eslint src",
+    "build": "./node_modules/.bin/babel --presets env ./src/index.js -o ./dist/index.js",
+    "watch": "./node_modules/.bin/babel --watch --presets env ./src/index.js -o ./dist/index.js",
+    "test": "npm build && npm run lint && \"node_modules/.bin/mocha\""
+  },
+  "keywords": [
+    "node",
+    "node.js",
+    "download",
+    "http"
+  ],
+  "author": "Jose De Gouveia <dhgouveia@hotmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "chai": "^4.1.2",
+    "eslint": "^4.19.1",
+    "mocha": "^5.1.1"
+  }
+}

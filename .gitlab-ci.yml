@@ -1,0 +1,13 @@
+image: node:6.9.5
+
+cache:
+  paths:
+  - node_modules/
+
+before_script:
+  - npm install --no-optional
+
+build:
+  script:
+    - npm test
+    - npm build
