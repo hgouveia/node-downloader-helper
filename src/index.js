@@ -16,7 +16,7 @@ export const DH_STATES = {
     FAILED: 'FAILED'
 }
 
-export class DownloadHelper extends EventEmitter {
+export class DownloaderHelper extends EventEmitter {
     constructor(url, destFolder, header = {}) {
         super();
 
@@ -34,6 +34,7 @@ export class DownloadHelper extends EventEmitter {
         this.__header = header;
         this.__isResumed = false;
         this.__isResumable = false;
+        this.__isRedirected = false;
         this.__statsEstimate = {
             time: 0,
             bytes: 0,
@@ -50,8 +51,10 @@ export class DownloadHelper extends EventEmitter {
 
     start() {
         return new Promise((resolve, reject) => {
-            this.emit('start');
-            this.__setState(this.__states.STARTED);
+            if (!this.__isRedirected) {
+                this.emit('start');
+                this.__setState(this.__states.STARTED);
+            }
             this.__fileStream = fs.createWriteStream(this.__filePath,
                 this.__isResumed ? { 'flags': 'a' } : {});
             this.__request = this.__protocol.request(this.__options, response => {
@@ -65,6 +68,7 @@ export class DownloadHelper extends EventEmitter {
                 // Handle Redirects
                 if (response.statusCode > 300 && response.statusCode < 400 &&
                     response.headers.hasOwnProperty('location') && response.headers.location) {
+                    this.__isRedirected = true;
                     this.__initProtocol(response.headers.location);
                     this.__fileStream.close();
                     return this.start()
@@ -91,6 +95,7 @@ export class DownloadHelper extends EventEmitter {
                 // Start Downloading
                 this.emit('download');
                 this.__isResumed = false;
+                this.__isRedirected = false;
                 this.__setState(this.__states.DOWNLOADING);
                 this.__statsEstimate.time = new Date();
 
@@ -232,7 +237,7 @@ export class DownloadHelper extends EventEmitter {
             throw new Error("Destination Folder couldn't be empty");
         }
 
-        if (fs.existsSync(destFolder)) {
+        if (!fs.existsSync(destFolder)) {
             throw new Error('Destination Folder must exist');
         }
 

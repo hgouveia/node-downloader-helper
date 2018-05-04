@@ -1,22 +1,24 @@
-# node-download-helper
+# node-downloader-helper
 
-[![NPM Version](https://img.shields.io/npm/v/hgouveia/node-download-helper.svg?style=flat-square "npm version")](https://www.npmjs.com/package/node-download-helper)
-[![Build Status](https://img.shields.io/travis/hgouveia/node-download-helper/master.svg?style=flat-square "Build Status")](https://travis-ci.org/hgouveia/node-download-helper)
-[![Windows Build Status](https://img.shields.io/appveyor/ci/hgouveia/node-download-helper/master.svg?label=windows&style=flat-square "Windows Build Status")](https://ci.appveyor.com/project/hgouveia/node-download-helper)
+[![NPM Version](https://img.shields.io/npm/v/hgouveia/node-downloader-helper.svg?style=flat-square "npm version")](https://www.npmjs.com/package/node-downloader-helper)
+[![Build Status](https://img.shields.io/travis/hgouveia/node-downloader-helper/master.svg?style=flat-square "Build Status")](https://travis-ci.org/hgouveia/node-downloader-helper)
+[![Windows Build Status](https://img.shields.io/appveyor/ci/hgouveia/node-downloader-helper/master.svg?label=windows&style=flat-square "Windows Build Status")](https://ci.appveyor.com/project/hgouveia/node-downloader-helper)
 
 
 A simple http file downloader for node.js
 
 Features:
+- No thirdparty dependecies
 - Supports pause/resume
 - Supports http/https
 - Supports http redirects
 - Usable on vanilla nodejs, electron, nwjs
+- Progress stats
 
 ## Install
 
 ```
-$ npm install --save node-download-helper
+$ npm install --save node-downloader-helper
 ```
 
 ## Usage
@@ -24,8 +26,8 @@ $ npm install --save node-download-helper
 For a more complete example check [example](example/) folder
 
 ```javascript
-const { DownloadHelper } = require('node-download-helper');
-const dl = new DownloadHelper('http://ipv4.download.thinkbroadband.com/1GB.zip', __dirname);
+const { DownloaderHelper } = require('node-downloader-helper');
+const dl = new DownloaderHelper('http://ipv4.download.thinkbroadband.com/1GB.zip', __dirname);
 
 dl.on('end', () => console.log('Download Completed'))
 dl.start();
@@ -56,7 +58,7 @@ dl.start();
 | stop         	| triggered when the .stop method is called                       	|
 | stateChanged 	| triggered when the state changes `callback(state)`               	|
 
-progress stats object
+progress `stats` object
 ```javascript
 {
     total:, // total size that needs to be downloaded in bytes
@@ -78,7 +80,6 @@ progress stats object
 | STOPPED      	| STOPPED                          	|
 | FINISHED     	| FINISHED                         	|
 | FAILED       	| FAILED                           	|
-| stateChanged 	| triggered when the state changes 	|
 
 ## Test
 
@@ -95,5 +96,5 @@ Read [License](LICENSE) for more licensing information.
 Read [here](CONTRIBUTING.md) for more information.
 
 ## TODO
-- Better testing
+- Better code testing
 - Support custom file name

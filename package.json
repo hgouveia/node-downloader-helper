@@ -1,5 +1,5 @@
 {
-  "name": "node-download-helper",
+  "name": "node-downloader-helper",
   "version": "1.0.0",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
@@ -8,7 +8,7 @@
     "lint": "./node_modules/.bin/eslint src",
     "build": "./node_modules/.bin/babel --presets env ./src/index.js -o ./dist/index.js",
     "watch": "./node_modules/.bin/babel --watch --presets env ./src/index.js -o ./dist/index.js",
-    "test": "npm build && npm run lint && \"node_modules/.bin/mocha\""
+    "test": "npm run build && npm run lint && \"node_modules/.bin/mocha\""
   },
   "keywords": [
     "node",

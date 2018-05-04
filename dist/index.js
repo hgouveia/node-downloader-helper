@@ -3,7 +3,7 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.DownloadHelper = exports.DH_STATES = undefined;
+exports.DownloaderHelper = exports.DH_STATES = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -48,15 +48,15 @@ var DH_STATES = exports.DH_STATES = {
     FAILED: 'FAILED'
 };
 
-var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
-    _inherits(DownloadHelper, _EventEmitter);
+var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
+    _inherits(DownloaderHelper, _EventEmitter);
 
-    function DownloadHelper(url, destFolder) {
+    function DownloaderHelper(url, destFolder) {
         var header = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
-        _classCallCheck(this, DownloadHelper);
+        _classCallCheck(this, DownloaderHelper);
 
-        var _this = _possibleConstructorReturn(this, (DownloadHelper.__proto__ || Object.getPrototypeOf(DownloadHelper)).call(this));
+        var _this = _possibleConstructorReturn(this, (DownloaderHelper.__proto__ || Object.getPrototypeOf(DownloaderHelper)).call(this));
 
         if (!_this.__validate(url, destFolder)) {
             return _possibleConstructorReturn(_this);
@@ -72,6 +72,7 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
         _this.__header = header;
         _this.__isResumed = false;
         _this.__isResumable = false;
+        _this.__isRedirected = false;
         _this.__statsEstimate = {
             time: 0,
             bytes: 0,
@@ -85,14 +86,16 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
         return _this;
     }
 
-    _createClass(DownloadHelper, [{
+    _createClass(DownloaderHelper, [{
         key: 'start',
         value: function start() {
             var _this2 = this;
 
             return new Promise(function (resolve, reject) {
-                _this2.emit('start');
-                _this2.__setState(_this2.__states.STARTED);
+                if (!_this2.__isRedirected) {
+                    _this2.emit('start');
+                    _this2.__setState(_this2.__states.STARTED);
+                }
                 _this2.__fileStream = fs.createWriteStream(_this2.__filePath, _this2.__isResumed ? { 'flags': 'a' } : {});
                 _this2.__request = _this2.__protocol.request(_this2.__options, function (response) {
                     //Stats
@@ -104,6 +107,7 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
 
                     // Handle Redirects
                     if (response.statusCode > 300 && response.statusCode < 400 && response.headers.hasOwnProperty('location') && response.headers.location) {
+                        _this2.__isRedirected = true;
                         _this2.__initProtocol(response.headers.location);
                         _this2.__fileStream.close();
                         return _this2.start().then(function () {
@@ -129,6 +133,7 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
                     // Start Downloading
                     _this2.emit('download');
                     _this2.__isResumed = false;
+                    _this2.__isRedirected = false;
                     _this2.__setState(_this2.__states.DOWNLOADING);
                     _this2.__statsEstimate.time = new Date();
 
@@ -291,7 +296,7 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
                 throw new Error("Destination Folder couldn't be empty");
             }
 
-            if (fs.existsSync(destFolder)) {
+            if (!fs.existsSync(destFolder)) {
                 throw new Error('Destination Folder must exist');
             }
 
@@ -306,5 +311,5 @@ var DownloadHelper = exports.DownloadHelper = function (_EventEmitter) {
         }
     }]);
 
-    return DownloadHelper;
+    return DownloaderHelper;
 }(_events.EventEmitter);

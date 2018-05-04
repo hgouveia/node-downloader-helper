@@ -1,8 +1,8 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
-const { DownloadHelper } = require('../dist');
+const { DownloaderHelper } = require('../dist');
 const { byteHelper, pauseTimer } = require('./helpers');
 const url = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
-const dl = new DownloadHelper(url, __dirname);
+const dl = new DownloaderHelper(url, __dirname);
 
 dl
     .on('end', () => console.log('Download Completed'))
