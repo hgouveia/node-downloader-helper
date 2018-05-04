@@ -82,8 +82,10 @@ export class DownloaderHelper extends EventEmitter {
 
                 // check if response is success
                 if (response.statusCode !== 200 && response.statusCode !== 206) {
-                    let err = new Error('Response status was ' + response.statusCode);
+                    const err = new Error('Response status was ' + response.statusCode);
                     this.emit('error', err);
+                    this.__fileStream.close();
+                    fs.unlink(this.__filePath);
                     return reject(err);
                 }
 

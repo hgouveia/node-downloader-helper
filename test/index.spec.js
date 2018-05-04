@@ -6,6 +6,12 @@ describe('DownloaderHelper', function () {
 
     describe('constructor', function () {
 
+        it('should create a instance', function () {
+            expect(function () {
+                const dl = new DownloaderHelper(downloadURL, __dirname);
+            }).to.not.throw();
+        });
+
         it('should fail if url is not an string', function () {
             expect(function () {
                 const dl = new DownloaderHelper(1234, __dirname);

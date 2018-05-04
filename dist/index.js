@@ -123,6 +123,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     if (response.statusCode !== 200 && response.statusCode !== 206) {
                         var err = new Error('Response status was ' + response.statusCode);
                         _this2.emit('error', err);
+                        _this2.__fileStream.close();
+                        fs.unlink(_this2.__filePath);
                         return reject(err);
                     }
 
