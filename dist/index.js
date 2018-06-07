@@ -52,7 +52,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
     _inherits(DownloaderHelper, _EventEmitter);
 
     function DownloaderHelper(url, destFolder) {
-        var header = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+        var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : { headers: {} };
 
         _classCallCheck(this, DownloaderHelper);
 
@@ -62,6 +62,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             return _possibleConstructorReturn(_this);
         }
 
+        var opts = Object.assign({}, { headers: {} }, options);
+
         _this.url = url;
         _this.state = DH_STATES.IDLE;
 
@@ -69,7 +71,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
         _this.__downloaded = 0;
         _this.__progress = 0;
         _this.__states = DH_STATES;
-        _this.__header = header;
+        _this.__headers = opts.headers;
         _this.__isResumed = false;
         _this.__isResumable = false;
         _this.__isRedirected = false;
@@ -79,8 +81,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             prevBytes: 0
         };
 
-        _this.__options = _this.__getOptions('GET', url, header);
-        _this.__fileName = path.basename(URL.parse(url).pathname);
+        _this.__options = _this.__getOptions('GET', url, opts.headers);
+        _this.__fileName = opts.hasOwnProperty('fileName') && opts.fileName ? opts.fileName : path.basename(URL.parse(url).pathname);
         _this.__filePath = path.join(destFolder, _this.__fileName);
         _this.__protocol = url.indexOf('https://') > -1 ? https : http;
         return _this;
@@ -254,7 +256,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
     }, {
         key: '__getOptions',
         value: function __getOptions(method, url) {
-            var header = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
+            var headers = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
             var urlParse = URL.parse(url);
             var options = {
@@ -265,8 +267,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                 method: method
             };
 
-            if (header) {
-                options['headers'] = header;
+            if (headers) {
+                options['headers'] = headers;
             }
 
             return options;
@@ -308,7 +310,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
         key: '__initProtocol',
         value: function __initProtocol(url) {
             this.url = url;
-            this.__options = this.__getOptions('GET', url, this.__header);
+            this.__options = this.__getOptions('GET', url, this.__headers);
             this.__protocol = url.indexOf('https://') > -1 ? https : http;
         }
     }]);

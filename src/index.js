@@ -17,12 +17,14 @@ export const DH_STATES = {
 }
 
 export class DownloaderHelper extends EventEmitter {
-    constructor(url, destFolder, header = {}) {
+    constructor(url, destFolder, options = { headers: {} }) {
         super();
 
         if (!this.__validate(url, destFolder)) {
             return;
         }
+
+        const opts = Object.assign({}, { headers: {} }, options);
 
         this.url = url;
         this.state = DH_STATES.IDLE;
@@ -31,7 +33,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__downloaded = 0;
         this.__progress = 0;
         this.__states = DH_STATES;
-        this.__header = header;
+        this.__headers = opts.headers;
         this.__isResumed = false;
         this.__isResumable = false;
         this.__isRedirected = false;
@@ -41,8 +43,10 @@ export class DownloaderHelper extends EventEmitter {
             prevBytes: 0
         };
 
-        this.__options = this.__getOptions('GET', url, header);
-        this.__fileName = path.basename(URL.parse(url).pathname);
+        this.__options = this.__getOptions('GET', url, opts.headers);
+        this.__fileName = (opts.hasOwnProperty('fileName') && opts.fileName)
+            ? opts.fileName
+            : path.basename(URL.parse(url).pathname)
         this.__filePath = path.join(destFolder, this.__fileName);
         this.__protocol = (url.indexOf('https://') > -1)
             ? https
@@ -198,7 +202,7 @@ export class DownloaderHelper extends EventEmitter {
         this.emit('stateChanged', this.state);
     }
 
-    __getOptions(method, url, header = {}) {
+    __getOptions(method, url, headers = {}) {
         let urlParse = URL.parse(url);
         let options = {
             protocol: urlParse.protocol,
@@ -208,8 +212,8 @@ export class DownloaderHelper extends EventEmitter {
             method: method
         };
 
-        if (header) {
-            options['headers'] = header;
+        if (headers) {
+            options['headers'] = headers;
         }
 
         return options;
@@ -248,7 +252,7 @@ export class DownloaderHelper extends EventEmitter {
 
     __initProtocol(url) {
         this.url = url;
-        this.__options = this.__getOptions('GET', url, this.__header);
+        this.__options = this.__getOptions('GET', url, this.__headers);
         this.__protocol = (url.indexOf('https://') > -1)
             ? https
             : http;

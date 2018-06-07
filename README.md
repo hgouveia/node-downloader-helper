@@ -97,4 +97,3 @@ Read [here](CONTRIBUTING.md) for more information.
 
 ## TODO
 - Better code testing
-- Support custom file name

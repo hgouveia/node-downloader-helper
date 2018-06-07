@@ -2,7 +2,12 @@
 const { DownloaderHelper } = require('../dist');
 const { byteHelper, pauseTimer } = require('./helpers');
 const url = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
-const dl = new DownloaderHelper(url, __dirname);
+// Options are optional
+const options = {
+    headers : {},
+    fileName: ''
+};
+const dl = new DownloaderHelper(url, __dirname, options);
 
 dl
     .on('end', () => console.log('Download Completed'))
