@@ -64,7 +64,7 @@ export class DownloaderHelper extends EventEmitter {
             this.__request = this.__protocol.request(this.__options, response => {
                 //Stats
                 if (!this.__isResumed) {
-                    this.__total = response.headers['content-length'];
+                    this.__total = parseInt(response.headers['content-length']);
                     this.__downloaded = 0;
                     this.__progress = 0;
                 }
@@ -109,7 +109,8 @@ export class DownloaderHelper extends EventEmitter {
                 response.on('data', chunk => this.__calculateStats(chunk.length));
 
                 this.__fileStream.on('finish', () => {
-                    if (this.state !== this.__states.PAUSED) {
+                    if (this.state !== this.__states.PAUSED &&
+                        this.state !== this.__states.STOPPED) {
                         this.__setState(this.__states.FINISHED);
                         this.emit('end');
                     }
@@ -159,17 +160,29 @@ export class DownloaderHelper extends EventEmitter {
 
     stop() {
         this.__setState(this.__states.STOPPED);
-        this.__request.abort();
-        this.__fileStream.close();
+        if (this.__request) {
+            this.__request.abort();
+        }
+        if (this.__fileStream) {
+            this.__fileStream.close();
+        }
         return new Promise((resolve, reject) => {
-            fs.unlink(this.__filePath, _err => {
-                if (_err) {
-                    this.__setState(this.__states.FAILED);
-                    this.emit('error', _err);
-                    return reject(_err);
+            fs.access(this.__filePath, _accessErr => {
+                // if can't access, probably is not created yet
+                if (_accessErr) {
+                    this.emit('stop');
+                    return resolve(true);
                 }
-                this.emit('stop');
-                resolve(true);
+
+                fs.unlink(this.__filePath, _err => {
+                    if (_err) {
+                        this.__setState(this.__states.FAILED);
+                        this.emit('error', _err);
+                        return reject(_err);
+                    }
+                    this.emit('stop');
+                    resolve(true);
+                });
             });
         });
     }
@@ -181,8 +194,8 @@ export class DownloaderHelper extends EventEmitter {
         this.__downloaded += receivedBytes;
         this.__progress = (this.__downloaded / this.__total) * 100;
 
-        // emit the progress every second
-        if (elaspsedTime > 1000) {
+        // emit the progress every second or if finished
+        if (this.__downloaded === this.__total || elaspsedTime > 1000) {
             // Calculate the speed
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;

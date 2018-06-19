@@ -102,7 +102,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                 _this2.__request = _this2.__protocol.request(_this2.__options, function (response) {
                     //Stats
                     if (!_this2.__isResumed) {
-                        _this2.__total = response.headers['content-length'];
+                        _this2.__total = parseInt(response.headers['content-length']);
                         _this2.__downloaded = 0;
                         _this2.__progress = 0;
                     }
@@ -147,7 +147,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     });
 
                     _this2.__fileStream.on('finish', function () {
-                        if (_this2.state !== _this2.__states.PAUSED) {
+                        if (_this2.state !== _this2.__states.PAUSED && _this2.state !== _this2.__states.STOPPED) {
                             _this2.__setState(_this2.__states.FINISHED);
                             _this2.emit('end');
                         }
@@ -209,17 +209,29 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             var _this4 = this;
 
             this.__setState(this.__states.STOPPED);
-            this.__request.abort();
-            this.__fileStream.close();
+            if (this.__request) {
+                this.__request.abort();
+            }
+            if (this.__fileStream) {
+                this.__fileStream.close();
+            }
             return new Promise(function (resolve, reject) {
-                fs.unlink(_this4.__filePath, function (_err) {
-                    if (_err) {
-                        _this4.__setState(_this4.__states.FAILED);
-                        _this4.emit('error', _err);
-                        return reject(_err);
+                fs.access(_this4.__filePath, function (_accessErr) {
+                    // if can't access, probably is not created yet
+                    if (_accessErr) {
+                        _this4.emit('stop');
+                        return resolve(true);
                     }
-                    _this4.emit('stop');
-                    resolve(true);
+
+                    fs.unlink(_this4.__filePath, function (_err) {
+                        if (_err) {
+                            _this4.__setState(_this4.__states.FAILED);
+                            _this4.emit('error', _err);
+                            return reject(_err);
+                        }
+                        _this4.emit('stop');
+                        resolve(true);
+                    });
                 });
             });
         }
@@ -232,8 +244,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             this.__downloaded += receivedBytes;
             this.__progress = this.__downloaded / this.__total * 100;
 
-            // emit the progress every second
-            if (elaspsedTime > 1000) {
+            // emit the progress every second or if finished
+            if (this.__downloaded === this.__total || elaspsedTime > 1000) {
                 // Calculate the speed
                 this.__statsEstimate.time = currentTime;
                 this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
