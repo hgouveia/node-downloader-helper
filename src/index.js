@@ -24,8 +24,6 @@ export class DownloaderHelper extends EventEmitter {
             return;
         }
 
-        const opts = Object.assign({}, { headers: {} }, options);
-
         this.url = url;
         this.state = DH_STATES.IDLE;
 
@@ -33,21 +31,20 @@ export class DownloaderHelper extends EventEmitter {
         this.__downloaded = 0;
         this.__progress = 0;
         this.__states = DH_STATES;
-        this.__headers = opts.headers;
+        this.__opts = Object.assign({}, { headers: {} }, options);
+        this.__headers = this.__opts.headers;
         this.__isResumed = false;
         this.__isResumable = false;
         this.__isRedirected = false;
+        this.__destFolder = destFolder;
         this.__statsEstimate = {
             time: 0,
             bytes: 0,
             prevBytes: 0
         };
-
-        this.__options = this.__getOptions('GET', url, opts.headers);
-        this.__fileName = (opts.hasOwnProperty('fileName') && opts.fileName)
-            ? opts.fileName
-            : path.basename(URL.parse(url).pathname)
-        this.__filePath = path.join(destFolder, this.__fileName);
+        this.__fileName = '';
+        this.__filePath = '';
+        this.__options = this.__getOptions('GET', url, this.__opts.headers);
         this.__protocol = (url.indexOf('https://') > -1)
             ? https
             : http;
@@ -59,8 +56,7 @@ export class DownloaderHelper extends EventEmitter {
                 this.emit('start');
                 this.__setState(this.__states.STARTED);
             }
-            this.__fileStream = fs.createWriteStream(this.__filePath,
-                this.__isResumed ? { 'flags': 'a' } : {});
+
             this.__request = this.__protocol.request(this.__options, response => {
                 //Stats
                 if (!this.__isResumed) {
@@ -74,13 +70,12 @@ export class DownloaderHelper extends EventEmitter {
                     response.headers.hasOwnProperty('location') && response.headers.location) {
                     this.__isRedirected = true;
                     this.__initProtocol(response.headers.location);
-                    this.__fileStream.close();
                     return this.start()
                         .then(() => resolve(true))
                         .catch(err => {
                             this.__setState(this.__states.FAILED);
                             this.emit('error', err);
-                            reject(err);
+                            return reject(err);
                         });
                 }
 
@@ -88,8 +83,6 @@ export class DownloaderHelper extends EventEmitter {
                 if (response.statusCode !== 200 && response.statusCode !== 206) {
                     const err = new Error('Response status was ' + response.statusCode);
                     this.emit('error', err);
-                    this.__fileStream.close();
-                    fs.unlink(this.__filePath);
                     return reject(err);
                 }
 
@@ -97,6 +90,28 @@ export class DownloaderHelper extends EventEmitter {
                     response.headers['accept-ranges'] !== 'none') {
                     this.__isResumable = true;
                 }
+
+                // Get Filename
+                if (response.headers.hasOwnProperty('content-disposition') &&
+                    response.headers['content-disposition'].indexOf('filename=') > -1) {
+
+                    let fileName = response.headers['content-disposition'];
+                    fileName = fileName.trim();
+                    fileName = fileName.substr(fileName.indexOf('filename=') + 9);
+                    fileName = fileName.replace(new RegExp('"', 'g'), '');
+
+                    this.__fileName = fileName;
+                } else {
+                    this.__fileName = path.basename(URL.parse(this.url).pathname);
+                }
+
+                // Create File
+                this.__fileName = (this.__opts.hasOwnProperty('fileName') && this.__opts.fileName)
+                    ? this.__opts.fileName
+                    : this.__fileName;
+                this.__filePath = path.join(this.__destFolder, this.__fileName);
+                this.__fileStream = fs.createWriteStream(this.__filePath,
+                    this.__isResumed ? { 'flags': 'a' } : {});
 
                 // Start Downloading
                 this.emit('download');
@@ -117,21 +132,27 @@ export class DownloaderHelper extends EventEmitter {
                     this.__fileStream.close();
                     return resolve(true);
                 });
+
+                this.__fileStream.on('error', err => {
+                    this.emit('error', err);
+                    this.__fileStream.close();
+                    this.__setState(this.__states.FAILED);
+                    fs.unlink(this.__filePath, () => reject(err));
+                    return reject(err);
+                });
             });
 
             // Error Handling
             this.__request.on('error', err => {
                 this.emit('error', err);
-                this.__fileStream.close();
                 this.__setState(this.__states.FAILED);
-                fs.unlink(this.__filePath, () => reject(err));
-            });
 
-            this.__fileStream.on('error', err => {
-                this.emit('error', err);
-                this.__fileStream.close();
-                this.__setState(this.__states.FAILED);
-                fs.unlink(this.__filePath, () => reject(err));
+                if (this.__fileStream) {
+                    this.__fileStream.close();
+                    fs.unlink(this.__filePath, () => reject(err));
+                }
+
+                return reject(err);
             });
 
             this.__request.end();
@@ -151,7 +172,7 @@ export class DownloaderHelper extends EventEmitter {
         if (this.__isResumable) {
             this.__isResumed = true;
             this.__downloaded = this.__getFilesizeInBytes(this.__filePath);
-            this.__options['headers']['range'] = 'bytes=' + (this.__downloaded - 1) + '-';
+            this.__options['headers']['range'] = 'bytes=' + this.__downloaded + '-';
         }
         this.emit('resume');
         return this.start()

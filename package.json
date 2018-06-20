@@ -1,6 +1,6 @@
 {
   "name": "node-downloader-helper",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
   "scripts": {
@@ -12,8 +12,11 @@
   },
   "keywords": [
     "node",
+    "nodejs",
     "node.js",
     "download",
+    "resumable",
+    "resume",
     "http"
   ],
   "author": "Jose De Gouveia <dhgouveia@hotmail.com>",
