@@ -17,7 +17,7 @@ export const DH_STATES = {
 }
 
 export class DownloaderHelper extends EventEmitter {
-    constructor(url, destFolder, options = { headers: {} }) {
+    constructor(url, destFolder, options = {}) {
         super();
 
         if (!this.__validate(url, destFolder)) {
@@ -26,12 +26,17 @@ export class DownloaderHelper extends EventEmitter {
 
         this.url = url;
         this.state = DH_STATES.IDLE;
+        this.__defaultOpts = {
+            headers: {},
+            override: false,
+            fileName: ''
+        };
 
         this.__total = 0;
         this.__downloaded = 0;
         this.__progress = 0;
         this.__states = DH_STATES;
-        this.__opts = Object.assign({}, { headers: {} }, options);
+        this.__opts = Object.assign({}, this.__defaultOpts, options);
         this.__headers = this.__opts.headers;
         this.__isResumed = false;
         this.__isResumable = false;
@@ -106,10 +111,13 @@ export class DownloaderHelper extends EventEmitter {
                 }
 
                 // Create File
-                this.__fileName = (this.__opts.hasOwnProperty('fileName') && this.__opts.fileName)
+                this.__fileName = (this.__opts.fileName)
                     ? this.__opts.fileName
                     : this.__fileName;
                 this.__filePath = path.join(this.__destFolder, this.__fileName);
+                if (!this.__opts.override) {
+                    this.__filePath = this.__uniqFileNameSync(this.__filePath);
+                }
                 this.__fileStream = fs.createWriteStream(this.__filePath,
                     this.__isResumed ? { 'flags': 'a' } : {});
 
@@ -124,34 +132,39 @@ export class DownloaderHelper extends EventEmitter {
                 response.on('data', chunk => this.__calculateStats(chunk.length));
 
                 this.__fileStream.on('finish', () => {
-                    if (this.state !== this.__states.PAUSED &&
-                        this.state !== this.__states.STOPPED) {
-                        this.__setState(this.__states.FINISHED);
-                        this.emit('end');
-                    }
-                    this.__fileStream.close();
-                    return resolve(true);
+                    this.__fileStream.close(_err => {
+                        if (_err) {
+                            return reject(_err);
+                        }
+                        if (this.state !== this.__states.PAUSED &&
+                            this.state !== this.__states.STOPPED) {
+                            this.__setState(this.__states.FINISHED);
+                            this.emit('end');
+                        }
+                        return resolve(true);
+                    });
                 });
 
+
                 this.__fileStream.on('error', err => {
-                    this.emit('error', err);
-                    this.__fileStream.close();
+                    this.__fileStream.close(() => {
+                        fs.unlink(this.__filePath, () => reject(err));
+                    });
                     this.__setState(this.__states.FAILED);
-                    fs.unlink(this.__filePath, () => reject(err));
+                    this.emit('error', err);
                     return reject(err);
                 });
             });
 
             // Error Handling
             this.__request.on('error', err => {
+                if (this.__fileStream) {
+                    this.__fileStream.close(() => {
+                        fs.unlink(this.__filePath, () => reject(err));
+                    });
+                }
                 this.emit('error', err);
                 this.__setState(this.__states.FAILED);
-
-                if (this.__fileStream) {
-                    this.__fileStream.close();
-                    fs.unlink(this.__filePath, () => reject(err));
-                }
-
                 return reject(err);
             });
 
@@ -160,9 +173,13 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     pause() {
+        if (this.__request) {
+            this.__request.abort();
+        }
+        if (this.__fileStream) {
+            this.__fileStream.close();
+        }
         this.__setState(this.__states.PAUSED);
-        this.__request.abort();
-        this.__fileStream.close();
         this.emit('pause');
         return Promise.resolve(true);
     }
@@ -180,13 +197,13 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     stop() {
-        this.__setState(this.__states.STOPPED);
         if (this.__request) {
             this.__request.abort();
         }
         if (this.__fileStream) {
             this.__fileStream.close();
         }
+        this.__setState(this.__states.STOPPED);
         return new Promise((resolve, reject) => {
             fs.access(this.__filePath, _accessErr => {
                 // if can't access, probably is not created yet
@@ -292,4 +309,29 @@ export class DownloaderHelper extends EventEmitter {
             : http;
     }
 
+
+    __uniqFileName(path) {
+        if (typeof path !== 'string' || path === '') {
+            return path;
+        }
+
+        try {
+            fs.accessSync(path, fs.F_OK);
+            let pathInfo = path.match(/(.*)(\([0-9]+\))(\..*)$/);
+            let base = pathInfo ? pathInfo[1].trim() : path;
+            let suffix = pathInfo ? parseInt(pathInfo[2].replace(/\(|\)/, '')) : 0;
+            let ext = path.split('.').pop();
+
+            if (ext !== path) {
+                ext = '.' + ext;
+                base = base.replace(ext, '');
+            } else {
+                ext = '';
+            }
+
+            return this.__uniqFileName(base + ' (' + (++suffix) + ')' + ext);
+        } catch (err) {
+            return path;
+        }
+    }
 }

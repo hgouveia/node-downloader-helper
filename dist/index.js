@@ -52,7 +52,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
     _inherits(DownloaderHelper, _EventEmitter);
 
     function DownloaderHelper(url, destFolder) {
-        var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : { headers: {} };
+        var options = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
 
         _classCallCheck(this, DownloaderHelper);
 
@@ -64,12 +64,17 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
 
         _this.url = url;
         _this.state = DH_STATES.IDLE;
+        _this.__defaultOpts = {
+            headers: {},
+            override: false,
+            fileName: ''
+        };
 
         _this.__total = 0;
         _this.__downloaded = 0;
         _this.__progress = 0;
         _this.__states = DH_STATES;
-        _this.__opts = Object.assign({}, { headers: {} }, options);
+        _this.__opts = Object.assign({}, _this.__defaultOpts, options);
         _this.__headers = _this.__opts.headers;
         _this.__isResumed = false;
         _this.__isResumable = false;
@@ -144,8 +149,11 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     }
 
                     // Create File
-                    _this2.__fileName = _this2.__opts.hasOwnProperty('fileName') && _this2.__opts.fileName ? _this2.__opts.fileName : _this2.__fileName;
+                    _this2.__fileName = _this2.__opts.fileName ? _this2.__opts.fileName : _this2.__fileName;
                     _this2.__filePath = path.join(_this2.__destFolder, _this2.__fileName);
+                    if (!_this2.__opts.override) {
+                        _this2.__filePath = _this2.__uniqFileNameSync(_this2.__filePath);
+                    }
                     _this2.__fileStream = fs.createWriteStream(_this2.__filePath, _this2.__isResumed ? { 'flags': 'a' } : {});
 
                     // Start Downloading
@@ -161,37 +169,41 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     });
 
                     _this2.__fileStream.on('finish', function () {
-                        if (_this2.state !== _this2.__states.PAUSED && _this2.state !== _this2.__states.STOPPED) {
-                            _this2.__setState(_this2.__states.FINISHED);
-                            _this2.emit('end');
-                        }
-                        _this2.__fileStream.close();
-                        return resolve(true);
+                        _this2.__fileStream.close(function (_err) {
+                            if (_err) {
+                                return reject(_err);
+                            }
+                            if (_this2.state !== _this2.__states.PAUSED && _this2.state !== _this2.__states.STOPPED) {
+                                _this2.__setState(_this2.__states.FINISHED);
+                                _this2.emit('end');
+                            }
+                            return resolve(true);
+                        });
                     });
 
                     _this2.__fileStream.on('error', function (err) {
-                        _this2.emit('error', err);
-                        _this2.__fileStream.close();
-                        _this2.__setState(_this2.__states.FAILED);
-                        fs.unlink(_this2.__filePath, function () {
-                            return reject(err);
+                        _this2.__fileStream.close(function () {
+                            fs.unlink(_this2.__filePath, function () {
+                                return reject(err);
+                            });
                         });
+                        _this2.__setState(_this2.__states.FAILED);
+                        _this2.emit('error', err);
                         return reject(err);
                     });
                 });
 
                 // Error Handling
                 _this2.__request.on('error', function (err) {
-                    _this2.emit('error', err);
-                    _this2.__setState(_this2.__states.FAILED);
-
                     if (_this2.__fileStream) {
-                        _this2.__fileStream.close();
-                        fs.unlink(_this2.__filePath, function () {
-                            return reject(err);
+                        _this2.__fileStream.close(function () {
+                            fs.unlink(_this2.__filePath, function () {
+                                return reject(err);
+                            });
                         });
                     }
-
+                    _this2.emit('error', err);
+                    _this2.__setState(_this2.__states.FAILED);
                     return reject(err);
                 });
 
@@ -201,9 +213,13 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
     }, {
         key: 'pause',
         value: function pause() {
+            if (this.__request) {
+                this.__request.abort();
+            }
+            if (this.__fileStream) {
+                this.__fileStream.close();
+            }
             this.__setState(this.__states.PAUSED);
-            this.__request.abort();
-            this.__fileStream.close();
             this.emit('pause');
             return Promise.resolve(true);
         }
@@ -228,13 +244,13 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
         value: function stop() {
             var _this4 = this;
 
-            this.__setState(this.__states.STOPPED);
             if (this.__request) {
                 this.__request.abort();
             }
             if (this.__fileStream) {
                 this.__fileStream.close();
             }
+            this.__setState(this.__states.STOPPED);
             return new Promise(function (resolve, reject) {
                 fs.access(_this4.__filePath, function (_accessErr) {
                     // if can't access, probably is not created yet
@@ -344,6 +360,32 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             this.url = url;
             this.__options = this.__getOptions('GET', url, this.__headers);
             this.__protocol = url.indexOf('https://') > -1 ? https : http;
+        }
+    }, {
+        key: '__uniqFileName',
+        value: function __uniqFileName(path) {
+            if (typeof path !== 'string' || path === '') {
+                return path;
+            }
+
+            try {
+                fs.accessSync(path, fs.F_OK);
+                var pathInfo = path.match(/(.*)(\([0-9]+\))(\..*)$/);
+                var base = pathInfo ? pathInfo[1].trim() : path;
+                var suffix = pathInfo ? parseInt(pathInfo[2].replace(/\(|\)/, '')) : 0;
+                var ext = path.split('.').pop();
+
+                if (ext !== path) {
+                    ext = '.' + ext;
+                    base = base.replace(ext, '');
+                } else {
+                    ext = '';
+                }
+
+                return this.__uniqFileName(base + ' (' + ++suffix + ')' + ext);
+            } catch (err) {
+                return path;
+            }
         }
     }]);
 

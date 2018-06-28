@@ -3,9 +3,11 @@ const { DownloaderHelper } = require('../dist');
 const { byteHelper, pauseTimer } = require('./helpers');
 const url = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
 // Options are optional
+// these are the default options
 const options = {
-    headers : {},
-    fileName: ''
+    headers : {}, // http headers ex: 'Authorization'
+    fileName: '', // custom filename when saved
+    override: false, //if true it will override the file, otherwise will append '(number)' to the end of file
 };
 const dl = new DownloaderHelper(url, __dirname, options);
 
