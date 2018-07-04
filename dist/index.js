@@ -309,7 +309,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             var urlParse = URL.parse(url);
             var options = {
                 protocol: urlParse.protocol,
-                host: urlParse.host,
+                host: urlParse.hostname,
                 port: urlParse.port,
                 path: urlParse.path,
                 method: method
@@ -362,8 +362,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             this.__protocol = url.indexOf('https://') > -1 ? https : http;
         }
     }, {
-        key: '__uniqFileName',
-        value: function __uniqFileName(path) {
+        key: '__uniqFileNameSync',
+        value: function __uniqFileNameSync(path) {
             if (typeof path !== 'string' || path === '') {
                 return path;
             }
@@ -382,7 +382,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     ext = '';
                 }
 
-                return this.__uniqFileName(base + ' (' + ++suffix + ')' + ext);
+                return this.__uniqFileNameSync(base + ' (' + ++suffix + ')' + ext);
             } catch (err) {
                 return path;
             }

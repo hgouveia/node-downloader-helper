@@ -257,7 +257,7 @@ export class DownloaderHelper extends EventEmitter {
         let urlParse = URL.parse(url);
         let options = {
             protocol: urlParse.protocol,
-            host: urlParse.host,
+            host: urlParse.hostname,
             port: urlParse.port,
             path: urlParse.path,
             method: method
@@ -310,7 +310,7 @@ export class DownloaderHelper extends EventEmitter {
     }
 
 
-    __uniqFileName(path) {
+    __uniqFileNameSync(path) {
         if (typeof path !== 'string' || path === '') {
             return path;
         }
@@ -329,7 +329,7 @@ export class DownloaderHelper extends EventEmitter {
                 ext = '';
             }
 
-            return this.__uniqFileName(base + ' (' + (++suffix) + ')' + ext);
+            return this.__uniqFileNameSync(base + ' (' + (++suffix) + ')' + ext);
         } catch (err) {
             return path;
         }
