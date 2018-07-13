@@ -9,9 +9,8 @@ module.exports.byteHelper = function (value) {
         units[number];
 }
 
-module.exports.pauseTimer = function (_dl, wait) {
+module.exports.pauseResumeTimer = function (_dl, wait) {
     setTimeout(() => {
-
         if (_dl.state === DH_STATES.FINISHED ||
             _dl.state === DH_STATES.FAILED) {
             return;
@@ -20,12 +19,10 @@ module.exports.pauseTimer = function (_dl, wait) {
         _dl.pause()
             .then(() => console.log(`Paused for ${wait / 1000} seconds`))
             .then(() => setTimeout(() => {
-                _dl.resume()
-                    .then(isResumable => {
-                        if (!isResumable) {
-                            console.warn("This URL doesn't support resume, it will start from the beginning");
-                        }
-                    });
+                if (!_dl.isResumable()) {
+                    console.warn("This URL doesn't support resume, it will start from the beginning");
+                }
+                return _dl.resume();
             }, wait));
 
     }, wait);

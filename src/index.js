@@ -57,104 +57,14 @@ export class DownloaderHelper extends EventEmitter {
 
     start() {
         return new Promise((resolve, reject) => {
-            if (!this.__isRedirected) {
+            if (!this.__isRedirected &&
+                this.state !== this.__states.RESUMED) {
                 this.emit('start');
                 this.__setState(this.__states.STARTED);
             }
 
-            this.__request = this.__protocol.request(this.__options, response => {
-                //Stats
-                if (!this.__isResumed) {
-                    this.__total = parseInt(response.headers['content-length']);
-                    this.__downloaded = 0;
-                    this.__progress = 0;
-                }
-
-                // Handle Redirects
-                if (response.statusCode > 300 && response.statusCode < 400 &&
-                    response.headers.hasOwnProperty('location') && response.headers.location) {
-                    this.__isRedirected = true;
-                    this.__initProtocol(response.headers.location);
-                    return this.start()
-                        .then(() => resolve(true))
-                        .catch(err => {
-                            this.__setState(this.__states.FAILED);
-                            this.emit('error', err);
-                            return reject(err);
-                        });
-                }
-
-                // check if response is success
-                if (response.statusCode !== 200 && response.statusCode !== 206) {
-                    const err = new Error('Response status was ' + response.statusCode);
-                    this.emit('error', err);
-                    return reject(err);
-                }
-
-                if (response.headers.hasOwnProperty('accept-ranges') &&
-                    response.headers['accept-ranges'] !== 'none') {
-                    this.__isResumable = true;
-                }
-
-                // Get Filename
-                if (response.headers.hasOwnProperty('content-disposition') &&
-                    response.headers['content-disposition'].indexOf('filename=') > -1) {
-
-                    let fileName = response.headers['content-disposition'];
-                    fileName = fileName.trim();
-                    fileName = fileName.substr(fileName.indexOf('filename=') + 9);
-                    fileName = fileName.replace(new RegExp('"', 'g'), '');
-
-                    this.__fileName = fileName;
-                } else {
-                    this.__fileName = path.basename(URL.parse(this.url).pathname);
-                }
-
-                // Create File
-                this.__fileName = (this.__opts.fileName)
-                    ? this.__opts.fileName
-                    : this.__fileName;
-                this.__filePath = path.join(this.__destFolder, this.__fileName);
-                if (!this.__opts.override) {
-                    this.__filePath = this.__uniqFileNameSync(this.__filePath);
-                }
-                this.__fileStream = fs.createWriteStream(this.__filePath,
-                    this.__isResumed ? { 'flags': 'a' } : {});
-
-                // Start Downloading
-                this.emit('download');
-                this.__isResumed = false;
-                this.__isRedirected = false;
-                this.__setState(this.__states.DOWNLOADING);
-                this.__statsEstimate.time = new Date();
-
-                response.pipe(this.__fileStream);
-                response.on('data', chunk => this.__calculateStats(chunk.length));
-
-                this.__fileStream.on('finish', () => {
-                    this.__fileStream.close(_err => {
-                        if (_err) {
-                            return reject(_err);
-                        }
-                        if (this.state !== this.__states.PAUSED &&
-                            this.state !== this.__states.STOPPED) {
-                            this.__setState(this.__states.FINISHED);
-                            this.emit('end');
-                        }
-                        return resolve(true);
-                    });
-                });
-
-
-                this.__fileStream.on('error', err => {
-                    this.__fileStream.close(() => {
-                        fs.unlink(this.__filePath, () => reject(err));
-                    });
-                    this.__setState(this.__states.FAILED);
-                    this.emit('error', err);
-                    return reject(err);
-                });
-            });
+            // Start the Download
+            this.__request = this.__downloadRequest(resolve, reject);
 
             // Error Handling
             this.__request.on('error', err => {
@@ -192,8 +102,7 @@ export class DownloaderHelper extends EventEmitter {
             this.__options['headers']['range'] = 'bytes=' + this.__downloaded + '-';
         }
         this.emit('resume');
-        return this.start()
-            .then(() => this.__isResumable);
+        return this.start();
     }
 
     stop() {
@@ -223,6 +132,118 @@ export class DownloaderHelper extends EventEmitter {
                 });
             });
         });
+    }
+
+    isResumable() {
+        return this.__isResumable;
+    }
+
+
+    __downloadRequest(resolve, reject) {
+        return this.__protocol.request(this.__options, response => {
+            //Stats
+            if (!this.__isResumed) {
+                this.__total = parseInt(response.headers['content-length']);
+                this.__downloaded = 0;
+                this.__progress = 0;
+            }
+
+            // Handle Redirects
+            if (response.statusCode > 300 && response.statusCode < 400 &&
+                response.headers.hasOwnProperty('location') && response.headers.location) {
+                this.__isRedirected = true;
+                this.__initProtocol(response.headers.location);
+                return this.start()
+                    .then(() => resolve(true))
+                    .catch(err => {
+                        this.__setState(this.__states.FAILED);
+                        this.emit('error', err);
+                        return reject(err);
+                    });
+            }
+
+            // check if response is success
+            if (response.statusCode !== 200 && response.statusCode !== 206) {
+                const err = new Error('Response status was ' + response.statusCode);
+                this.emit('error', err);
+                return reject(err);
+            }
+
+            if (response.headers.hasOwnProperty('accept-ranges') &&
+                response.headers['accept-ranges'] !== 'none') {
+                this.__isResumable = true;
+            }
+
+            this.__fileName = this.__getFileNameFromHeaders(response.headers);
+            this.__filePath = this.__getFilePath(this.__fileName);
+            this.__fileStream = fs.createWriteStream(this.__filePath,
+                this.__isResumed ? { 'flags': 'a' } : {});
+
+            // Start Downloading
+            this.emit('download');
+            this.__isResumed = false;
+            this.__isRedirected = false;
+            this.__setState(this.__states.DOWNLOADING);
+            this.__statsEstimate.time = new Date();
+
+            response.pipe(this.__fileStream);
+            response.on('data', chunk => this.__calculateStats(chunk.length));
+
+            this.__fileStream.on('finish', () => {
+                this.__fileStream.close(_err => {
+                    if (_err) {
+                        return reject(_err);
+                    }
+                    if (this.state !== this.__states.PAUSED &&
+                        this.state !== this.__states.STOPPED) {
+                        this.__setState(this.__states.FINISHED);
+                        this.emit('end');
+                    }
+                    return resolve(true);
+                });
+            });
+
+            this.__fileStream.on('error', err => {
+                this.__fileStream.close(() => {
+                    fs.unlink(this.__filePath, () => reject(err));
+                });
+                this.__setState(this.__states.FAILED);
+                this.emit('error', err);
+                return reject(err);
+            });
+        });
+    }
+
+    __getFileNameFromHeaders(headers) {
+        let fileName = '';
+
+        if (this.__opts.fileName) {
+            return this.__opts.fileName;
+        }
+
+        // Get Filename
+        if (headers.hasOwnProperty('content-disposition') &&
+            headers['content-disposition'].indexOf('filename=') > -1) {
+
+            fileName = headers['content-disposition'];
+            fileName = fileName.trim();
+            fileName = fileName.substr(fileName.indexOf('filename=') + 9);
+            fileName = fileName.replace(new RegExp('"', 'g'), '');
+        } else {
+            fileName = path.basename(URL.parse(this.url).pathname);
+        }
+
+        return fileName;
+    }
+
+    __getFilePath(fileName) {
+        let filePath = path.join(this.__destFolder, fileName);
+
+        if (!this.__opts.override && this.state !== this.__states.RESUMED) {
+            filePath = this.__uniqFileNameSync(filePath);
+        }
+
+        return filePath;
     }
 
     __calculateStats(receivedBytes) {

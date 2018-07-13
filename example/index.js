@@ -1,6 +1,6 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
 const { DownloaderHelper } = require('../dist');
-const { byteHelper, pauseTimer } = require('./helpers');
+const { byteHelper, pauseResumeTimer } = require('./helpers');
 const url = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
 // Options are optional
 // these are the default options
@@ -15,7 +15,7 @@ dl
     .on('end', () => console.log('Download Completed'))
     .on('error', err => console.error('Something happend', err))
     .on('stateChanged', state => console.log('State: ', state))
-    .once('download', () => pauseTimer(dl, 5000))
+    .once('download', () => pauseResumeTimer(dl, 5000))
     .on('progress', stats => {
         const progress = stats.progress.toFixed(1);
         const speed = byteHelper(stats.speed);
