@@ -2,13 +2,21 @@
 const { DownloaderHelper } = require('../dist');
 const { byteHelper, pauseResumeTimer } = require('./helpers');
 const url = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
-// Options are optional
+const pkg = require('../package.json');
+
 // these are the default options
 const options = {
-    headers : {}, // http headers ex: 'Authorization'
-    fileName: '', // custom filename when saved
-    override: false, //if true it will override the file, otherwise will append '(number)' to the end of file
+    method: 'GET', // Request Method Verb
+    // Custom HTTP Header ex: Authorization, User-Agent
+    headers: {
+        'user-agent': pkg.name + '@' + pkg.version
+    },
+    fileName: '', // Custom filename when saved
+    override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
+    httpRequestOptions: {}, // Override the http request options  
+    httpsRequestOptions: {} // Override the https request options, ex: to add SSL Certs
 };
+
 const dl = new DownloaderHelper(url, __dirname, options);
 
 dl

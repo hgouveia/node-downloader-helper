@@ -24,12 +24,15 @@ export class DownloaderHelper extends EventEmitter {
             return;
         }
 
-        this.url = url;
+        this.url = this.requestURL = url;
         this.state = DH_STATES.IDLE;
         this.__defaultOpts = {
+            method: 'GET',
             headers: {},
+            fileName: '',
             override: false,
-            fileName: ''
+            httpRequestOptions: {},
+            httpsRequestOptions: {}
         };
 
         this.__total = 0;
@@ -49,10 +52,8 @@ export class DownloaderHelper extends EventEmitter {
         };
         this.__fileName = '';
         this.__filePath = '';
-        this.__options = this.__getOptions('GET', url, this.__opts.headers);
-        this.__protocol = (url.indexOf('https://') > -1)
-            ? https
-            : http;
+        this.__options = this.__getOptions(this.__opts.method, url, this.__opts.headers);
+        this.__initProtocol(url);
     }
 
     start() {
@@ -138,7 +139,6 @@ export class DownloaderHelper extends EventEmitter {
         return this.__isResumable;
     }
 
-
     __downloadRequest(resolve, reject) {
         return this.__protocol.request(this.__options, response => {
             //Stats
@@ -174,43 +174,47 @@ export class DownloaderHelper extends EventEmitter {
                 this.__isResumable = true;
             }
 
-            this.__fileName = this.__getFileNameFromHeaders(response.headers);
-            this.__filePath = this.__getFilePath(this.__fileName);
-            this.__fileStream = fs.createWriteStream(this.__filePath,
-                this.__isResumed ? { 'flags': 'a' } : {});
+            this.__startDownload(response, resolve, reject);
+        });
+    }
 
-            // Start Downloading
-            this.emit('download');
-            this.__isResumed = false;
-            this.__isRedirected = false;
-            this.__setState(this.__states.DOWNLOADING);
-            this.__statsEstimate.time = new Date();
+    __startDownload(response, resolve, reject) {
+        this.__fileName = this.__getFileNameFromHeaders(response.headers);
+        this.__filePath = this.__getFilePath(this.__fileName);
+        this.__fileStream = fs.createWriteStream(this.__filePath,
+            this.__isResumed ? { 'flags': 'a' } : {});
 
-            response.pipe(this.__fileStream);
-            response.on('data', chunk => this.__calculateStats(chunk.length));
+        // Start Downloading
+        this.emit('download');
+        this.__isResumed = false;
+        this.__isRedirected = false;
+        this.__setState(this.__states.DOWNLOADING);
+        this.__statsEstimate.time = new Date();
 
-            this.__fileStream.on('finish', () => {
-                this.__fileStream.close(_err => {
-                    if (_err) {
-                        return reject(_err);
-                    }
-                    if (this.state !== this.__states.PAUSED &&
-                        this.state !== this.__states.STOPPED) {
-                        this.__setState(this.__states.FINISHED);
-                        this.emit('end');
-                    }
-                    return resolve(true);
-                });
+        response.pipe(this.__fileStream);
+        response.on('data', chunk => this.__calculateStats(chunk.length));
+
+        this.__fileStream.on('finish', () => {
+            this.__fileStream.close(_err => {
+                if (_err) {
+                    return reject(_err);
+                }
+                if (this.state !== this.__states.PAUSED &&
+                    this.state !== this.__states.STOPPED) {
+                    this.__setState(this.__states.FINISHED);
+                    this.emit('end');
+                }
+                return resolve(true);
             });
+        });
 
-            this.__fileStream.on('error', err => {
-                this.__fileStream.close(() => {
-                    fs.unlink(this.__filePath, () => reject(err));
-                });
-                this.__setState(this.__states.FAILED);
-                this.emit('error', err);
-                return reject(err);
+        this.__fileStream.on('error', err => {
+            this.__fileStream.close(() => {
+                fs.unlink(this.__filePath, () => reject(err));
             });
+            this.__setState(this.__states.FAILED);
+            this.emit('error', err);
+            return reject(err);
         });
     }
 
@@ -230,7 +234,7 @@ export class DownloaderHelper extends EventEmitter {
             fileName = fileName.substr(fileName.indexOf('filename=') + 9);
             fileName = fileName.replace(new RegExp('"', 'g'), '');
         } else {
-            fileName = path.basename(URL.parse(this.url).pathname);
+            fileName = path.basename(URL.parse(this.requestURL).pathname);
         }
 
         return fileName;
@@ -323,13 +327,18 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     __initProtocol(url) {
-        this.url = url;
-        this.__options = this.__getOptions('GET', url, this.__headers);
-        this.__protocol = (url.indexOf('https://') > -1)
-            ? https
-            : http;
-    }
+        const defaultOpts = this.__getOptions(this.__opts.method, url, this.__headers);
+        this.requestURL = url;
 
+        if (url.indexOf('https://') > -1) {
+            this.__protocol = https;
+            this.__options = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
+        } else {
+            this.__protocol = http;
+            this.__options = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
+        }
+
+    }
 
     __uniqFileNameSync(path) {
         if (typeof path !== 'string' || path === '') {

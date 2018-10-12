@@ -62,12 +62,15 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             return _possibleConstructorReturn(_this);
         }
 
-        _this.url = url;
+        _this.url = _this.requestURL = url;
         _this.state = DH_STATES.IDLE;
         _this.__defaultOpts = {
+            method: 'GET',
             headers: {},
+            fileName: '',
             override: false,
-            fileName: ''
+            httpRequestOptions: {},
+            httpsRequestOptions: {}
         };
 
         _this.__total = 0;
@@ -87,8 +90,8 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
         };
         _this.__fileName = '';
         _this.__filePath = '';
-        _this.__options = _this.__getOptions('GET', url, _this.__opts.headers);
-        _this.__protocol = url.indexOf('https://') > -1 ? https : http;
+        _this.__options = _this.__getOptions(_this.__opts.method, url, _this.__opts.headers);
+        _this.__initProtocol(url);
         return _this;
     }
 
@@ -222,45 +225,52 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     _this4.__isResumable = true;
                 }
 
-                _this4.__fileName = _this4.__getFileNameFromHeaders(response.headers);
-                _this4.__filePath = _this4.__getFilePath(_this4.__fileName);
-                _this4.__fileStream = fs.createWriteStream(_this4.__filePath, _this4.__isResumed ? { 'flags': 'a' } : {});
+                _this4.__startDownload(response, resolve, reject);
+            });
+        }
+    }, {
+        key: '__startDownload',
+        value: function __startDownload(response, resolve, reject) {
+            var _this5 = this;
 
-                // Start Downloading
-                _this4.emit('download');
-                _this4.__isResumed = false;
-                _this4.__isRedirected = false;
-                _this4.__setState(_this4.__states.DOWNLOADING);
-                _this4.__statsEstimate.time = new Date();
+            this.__fileName = this.__getFileNameFromHeaders(response.headers);
+            this.__filePath = this.__getFilePath(this.__fileName);
+            this.__fileStream = fs.createWriteStream(this.__filePath, this.__isResumed ? { 'flags': 'a' } : {});
 
-                response.pipe(_this4.__fileStream);
-                response.on('data', function (chunk) {
-                    return _this4.__calculateStats(chunk.length);
+            // Start Downloading
+            this.emit('download');
+            this.__isResumed = false;
+            this.__isRedirected = false;
+            this.__setState(this.__states.DOWNLOADING);
+            this.__statsEstimate.time = new Date();
+
+            response.pipe(this.__fileStream);
+            response.on('data', function (chunk) {
+                return _this5.__calculateStats(chunk.length);
+            });
+
+            this.__fileStream.on('finish', function () {
+                _this5.__fileStream.close(function (_err) {
+                    if (_err) {
+                        return reject(_err);
+                    }
+                    if (_this5.state !== _this5.__states.PAUSED && _this5.state !== _this5.__states.STOPPED) {
+                        _this5.__setState(_this5.__states.FINISHED);
+                        _this5.emit('end');
+                    }
+                    return resolve(true);
                 });
+            });
 
-                _this4.__fileStream.on('finish', function () {
-                    _this4.__fileStream.close(function (_err) {
-                        if (_err) {
-                            return reject(_err);
-                        }
-                        if (_this4.state !== _this4.__states.PAUSED && _this4.state !== _this4.__states.STOPPED) {
-                            _this4.__setState(_this4.__states.FINISHED);
-                            _this4.emit('end');
-                        }
-                        return resolve(true);
+            this.__fileStream.on('error', function (err) {
+                _this5.__fileStream.close(function () {
+                    fs.unlink(_this5.__filePath, function () {
+                        return reject(err);
                     });
                 });
-
-                _this4.__fileStream.on('error', function (err) {
-                    _this4.__fileStream.close(function () {
-                        fs.unlink(_this4.__filePath, function () {
-                            return reject(err);
-                        });
-                    });
-                    _this4.__setState(_this4.__states.FAILED);
-                    _this4.emit('error', err);
-                    return reject(err);
-                });
+                _this5.__setState(_this5.__states.FAILED);
+                _this5.emit('error', err);
+                return reject(err);
             });
         }
     }, {
@@ -280,7 +290,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                 fileName = fileName.substr(fileName.indexOf('filename=') + 9);
                 fileName = fileName.replace(new RegExp('"', 'g'), '');
             } else {
-                fileName = path.basename(URL.parse(this.url).pathname);
+                fileName = path.basename(URL.parse(this.requestURL).pathname);
             }
 
             return fileName;
@@ -382,9 +392,16 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
     }, {
         key: '__initProtocol',
         value: function __initProtocol(url) {
-            this.url = url;
-            this.__options = this.__getOptions('GET', url, this.__headers);
-            this.__protocol = url.indexOf('https://') > -1 ? https : http;
+            var defaultOpts = this.__getOptions(this.__opts.method, url, this.__headers);
+            this.requestURL = url;
+
+            if (url.indexOf('https://') > -1) {
+                this.__protocol = https;
+                this.__options = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
+            } else {
+                this.__protocol = http;
+                this.__options = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
+            }
         }
     }, {
         key: '__uniqFileNameSync',

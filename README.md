@@ -12,6 +12,7 @@ Features:
 - Supports pause/resume
 - Supports http/https
 - Supports http redirects
+- Support custom native http request options
 - Usable on vanilla nodejs, electron, nwjs
 - Progress stats
 
@@ -32,6 +33,26 @@ const dl = new DownloaderHelper('http://ipv4.download.thinkbroadband.com/1GB.zip
 dl.on('end', () => console.log('Download Completed'))
 dl.start();
 ```
+
+## Options
+
+Download Helper constructor also allow a 3rd parameter to set some options `constructor(url, destinationFolder, options)`,
+these are the default values
+
+```javascript
+{
+    method: 'GET', // Request Method Verb
+    headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
+    fileName: '', // Custom filename when saved
+    override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
+    httpRequestOptions: {}, // Override the http request options  
+    httpsRequestOptions: {} // Override the https request options, ex: to add SSL Certs
+}
+```
+
+for `httpRequestOptions` the available options are detailed in here https://nodejs.org/api/http.html#http_http_request_options_callback
+
+for `httpsRequestOptions` the available options are detailed in here https://nodejs.org/api/https.html#https_https_request_options_callback
 
 
 ## Methods
