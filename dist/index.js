@@ -69,6 +69,7 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
             headers: {},
             fileName: '',
             override: false,
+            forceResume: false,
             httpRequestOptions: {},
             httpsRequestOptions: {}
         };
@@ -221,7 +222,9 @@ var DownloaderHelper = exports.DownloaderHelper = function (_EventEmitter) {
                     return reject(err);
                 }
 
-                if (response.headers.hasOwnProperty('accept-ranges') && response.headers['accept-ranges'] !== 'none') {
+                if (_this4.__opts.forceResume) {
+                    _this4.__isResumable = true;
+                } else if (response.headers.hasOwnProperty('accept-ranges') && response.headers['accept-ranges'] !== 'none') {
                     _this4.__isResumable = true;
                 }
 
