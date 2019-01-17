@@ -33,7 +33,7 @@ export class DownloaderHelper extends EventEmitter {
             override: false,
             httpRequestOptions: {},
             httpsRequestOptions: {},
-            enforcementResumable:false
+            forceResume:false
         };
 
         this.__total = 0;
@@ -169,7 +169,7 @@ export class DownloaderHelper extends EventEmitter {
                 this.emit('error', err);
                 return reject(err);
             }
-            if(this.__opts.enforcementResumable){
+            if(this.__opts.forceResume){
                  this.__isResumable = true;
             }else if (response.headers.hasOwnProperty('accept-ranges') &&
                 response.headers['accept-ranges'] !== 'none') {
