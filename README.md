@@ -44,10 +44,10 @@ these are the default values
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     fileName: '', // Custom filename when saved
+    forceResume: false // If the server does not return the "accept-ranges" header, can be force if it does support it
     override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
-    forceResume:false //If the server does not return the "accept-ranges" header, you can force Resume
 }
 ```
 
