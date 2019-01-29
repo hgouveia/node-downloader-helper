@@ -266,14 +266,13 @@ export class DownloaderHelper extends EventEmitter {
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
-
-            this.emit('progress', {
-                total: this.__total,
-                downloaded: this.__downloaded,
-                progress: this.__progress,
-                speed: this.__statsEstimate.bytes
-            });
         }
+        this.emit('progress', {
+            total: this.__total,
+            downloaded: this.__downloaded,
+            progress: this.__progress,
+            speed: this.__statsEstimate.bytes
+        });
     }
 
     __setState(state) {
