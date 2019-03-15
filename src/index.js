@@ -14,9 +14,17 @@ export const DH_STATES = {
     STOPPED: 'STOPPED',
     FINISHED: 'FINISHED',
     FAILED: 'FAILED'
-}
+};
 
 export class DownloaderHelper extends EventEmitter {
+
+    /**
+     * Creates an instance of DownloaderHelper.
+     * @param {String} url
+     * @param {String} destFolder
+     * @param {Object} [options={}]
+     * @memberof DownloaderHelper
+     */
     constructor(url, destFolder, options = {}) {
         super();
 
@@ -36,6 +44,7 @@ export class DownloaderHelper extends EventEmitter {
             httpsRequestOptions: {}
         };
 
+        this.__pipes = [];
         this.__total = 0;
         this.__downloaded = 0;
         this.__progress = 0;
@@ -57,6 +66,12 @@ export class DownloaderHelper extends EventEmitter {
         this.__initProtocol(url);
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
     start() {
         return new Promise((resolve, reject) => {
             if (!this.__isRedirected &&
@@ -84,6 +99,12 @@ export class DownloaderHelper extends EventEmitter {
         });
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
     pause() {
         if (this.__request) {
             this.__request.abort();
@@ -96,6 +117,12 @@ export class DownloaderHelper extends EventEmitter {
         return Promise.resolve(true);
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
     resume() {
         this.__setState(this.__states.RESUMED);
         if (this.__isResumable) {
@@ -107,6 +134,12 @@ export class DownloaderHelper extends EventEmitter {
         return this.start();
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
     stop() {
         if (this.__request) {
             this.__request.abort();
@@ -136,10 +169,37 @@ export class DownloaderHelper extends EventEmitter {
         });
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
     isResumable() {
         return this.__isResumable;
     }
 
+
+    /**
+     *
+     * @url https://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
+     * @param {stream.Writable} stream
+     * @param {Object} [options=null]
+     * @memberof DownloaderHelper
+     */
+    pipe(stream, options = null) {
+        this.__pipes.push({ stream, options });
+        return this;
+    }
+
+    /**
+     *
+     *
+     * @param {*} resolve
+     * @param {*} reject
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __downloadRequest(resolve, reject) {
         return this.__protocol.request(this.__options, response => {
             //Stats
@@ -181,6 +241,14 @@ export class DownloaderHelper extends EventEmitter {
         });
     }
 
+    /**
+     *
+     *
+     * @param {*} response
+     * @param {*} resolve
+     * @param {*} reject
+     * @memberof DownloaderHelper
+     */
     __startDownload(response, resolve, reject) {
         this.__fileName = this.__getFileNameFromHeaders(response.headers);
         this.__filePath = this.__getFilePath(this.__fileName);
@@ -197,6 +265,9 @@ export class DownloaderHelper extends EventEmitter {
         response.pipe(this.__fileStream);
         response.on('data', chunk => this.__calculateStats(chunk.length));
 
+        // Add users pipe
+        this.__pipes.forEach(pipe => response.pipe(pipe.stream, pipe.options));
+
         this.__fileStream.on('finish', () => {
             this.__fileStream.close(_err => {
                 if (_err) {
@@ -205,6 +276,7 @@ export class DownloaderHelper extends EventEmitter {
                 if (this.state !== this.__states.PAUSED &&
                     this.state !== this.__states.STOPPED) {
                     this.__setState(this.__states.FINISHED);
+                    this.__pipes = [];
                     this.emit('end');
                 }
                 return resolve(true);
@@ -216,11 +288,19 @@ export class DownloaderHelper extends EventEmitter {
                 fs.unlink(this.__filePath, () => reject(err));
             });
             this.__setState(this.__states.FAILED);
+            this.__pipes = [];
             this.emit('error', err);
             return reject(err);
         });
     }
 
+    /**
+     *
+     *
+     * @param {*} headers
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __getFileNameFromHeaders(headers) {
         let fileName = '';
 
@@ -243,6 +323,13 @@ export class DownloaderHelper extends EventEmitter {
         return fileName;
     }
 
+    /**
+     *
+     *
+     * @param {String} fileName
+     * @returns {String}
+     * @memberof DownloaderHelper
+     */
     __getFilePath(fileName) {
         let filePath = path.join(this.__destFolder, fileName);
 
@@ -253,20 +340,31 @@ export class DownloaderHelper extends EventEmitter {
         return filePath;
     }
 
+    /**
+     *
+     *
+     * @param {Number} receivedBytes
+     * @memberof DownloaderHelper
+     */
     __calculateStats(receivedBytes) {
         const currentTime = new Date();
         const elaspsedTime = currentTime - this.__statsEstimate.time;
 
+        if (!receivedBytes){
+            return;
+        }
+
         this.__downloaded += receivedBytes;
         this.__progress = (this.__downloaded / this.__total) * 100;
 
-        // emit the progress every second or if finished
+        // Calculate the speed every second or if finished
         if (this.__downloaded === this.__total || elaspsedTime > 1000) {
-            // Calculate the speed
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
         }
+
+        // emit the progress
         this.emit('progress', {
             total: this.__total,
             downloaded: this.__downloaded,
@@ -275,11 +373,26 @@ export class DownloaderHelper extends EventEmitter {
         });
     }
 
+    /**
+     *
+     *
+     * @param {String} state
+     * @memberof DownloaderHelper
+     */
     __setState(state) {
         this.state = state;
         this.emit('stateChanged', this.state);
     }
 
+    /**
+     *
+     *
+     * @param {String} method
+     * @param {String} url
+     * @param {Object} [headers={}]
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __getOptions(method, url, headers = {}) {
         let urlParse = URL.parse(url);
         let options = {
@@ -297,12 +410,27 @@ export class DownloaderHelper extends EventEmitter {
         return options;
     }
 
+    /**
+     *
+     *
+     * @param {String} filePath
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __getFilesizeInBytes(filePath) {
         const stats = fs.statSync(filePath);
         const fileSizeInBytes = stats.size;
         return fileSizeInBytes;
     }
 
+    /**
+     *
+     *
+     * @param {String} url
+     * @param {String} destFolder
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __validate(url, destFolder) {
 
         if (typeof url !== 'string') {
@@ -328,6 +456,12 @@ export class DownloaderHelper extends EventEmitter {
         return true;
     }
 
+    /**
+     *
+     *
+     * @param {String} url
+     * @memberof DownloaderHelper
+     */
     __initProtocol(url) {
         const defaultOpts = this.__getOptions(this.__opts.method, url, this.__headers);
         this.requestURL = url;
@@ -342,6 +476,13 @@ export class DownloaderHelper extends EventEmitter {
 
     }
 
+    /**
+     *
+     *
+     * @param {String} path
+     * @returns
+     * @memberof DownloaderHelper
+     */
     __uniqFileNameSync(path) {
         if (typeof path !== 'string' || path === '') {
             return path;

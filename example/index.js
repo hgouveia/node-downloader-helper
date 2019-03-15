@@ -18,6 +18,7 @@ const options = {
     httpsRequestOptions: {} // Override the https request options, ex: to add SSL Certs
 };
 
+let startTime = new Date();
 const dl = new DownloaderHelper(url, __dirname, options);
 
 dl
@@ -30,7 +31,14 @@ dl
         const speed = byteHelper(stats.speed);
         const downloaded = byteHelper(stats.downloaded);
         const total = byteHelper(stats.total);
-        console.log(`${speed}/s - ${progress}% [${downloaded}/${total}]`);
+
+        // print every one second
+        const currentTime = new Date();
+        const elaspsedTime = currentTime - startTime;
+        if (elaspsedTime > 1000) {
+            startTime = currentTime;
+            console.log(`${speed}/s - ${progress}% [${downloaded}/${total}]`);
+        }
     });
 
 console.log('Downloading: ', url);

@@ -1,13 +1,16 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
 const { DH_STATES } = require('../dist');
 
+// https://gist.github.com/thomseddon/3511330
 module.exports.byteHelper = function (value) {
-    // https://gist.github.com/thomseddon/3511330
-    var units = ['b', 'kB', 'MB', 'GB', 'TB'],
-        number = Math.floor(Math.log(value) / Math.log(1024));
+    if (value === 0) {
+        return '0 b';
+    }
+    const units = ['b', 'kB', 'MB', 'GB', 'TB'];
+    const number = Math.floor(Math.log(value) / Math.log(1024));
     return (value / Math.pow(1024, Math.floor(number))).toFixed(1) + ' ' +
         units[number];
-}
+};
 
 module.exports.pauseResumeTimer = function (_dl, wait) {
     setTimeout(() => {
@@ -26,4 +29,4 @@ module.exports.pauseResumeTimer = function (_dl, wait) {
             }, wait));
 
     }, wait);
-}
+};

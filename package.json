@@ -1,15 +1,18 @@
 {
   "name": "node-downloader-helper",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
   "scripts": {
     "start": "node ./example/index.js",
     "lint": "./node_modules/.bin/eslint src",
-    "build": "./node_modules/.bin/babel --presets env ./src/index.js -o ./dist/index.js --presets minify",
-    "watch": "./node_modules/.bin/babel --watch --presets env ./src/index.js -o ./dist/index.js",
-    "test": "npm run build && npm run lint && \"node_modules/.bin/mocha\""
+    "build": "./node_modules/.bin/babel --presets minify ./src/index.js -o ./dist/index.js",
+    "watch": "./node_modules/.bin/babel --watch ./src/index.js -o ./dist/index.js",
+    "test": "npm run lint && npm run build && \"node_modules/.bin/mocha\""
   },
+  "pre-commit": [
+    "test"
+  ],
   "keywords": [
     "node",
     "nodejs",
@@ -35,6 +38,7 @@
     "babel-preset-minify": "^0.5.0",
     "chai": "^4.1.2",
     "eslint": "^4.19.1",
-    "mocha": "^5.1.1"
+    "mocha": "^5.1.1",
+    "pre-commit": "^1.2.2"
   }
 }

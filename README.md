@@ -13,6 +13,7 @@ Features:
 - Supports http/https
 - Supports http redirects
 - Support custom native http request options
+- Support pipes
 - Usable on vanilla nodejs, electron, nwjs
 - Progress stats
 
@@ -64,6 +65,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | pause  	| pause the downloading                                                        	|
 | resume 	| resume the downloading if supported, if not it will start from the beginning 	|
 | stop   	| stop the downloading and remove the file                                     	|
+| pipe   	| readable.pipe(stream.Writable, options)                                     	|
 
 
 ## Events
@@ -94,14 +96,14 @@ progress `stats` object
 
 | Name         	| Value                            	|
 |--------------	|----------------------------------	|
-| IDLE         	| IDLE                             	|
-| STARTED      	| STARTED                          	|
-| DOWNLOADING  	| DOWNLOADING                      	|
-| PAUSED       	| PAUSED                           	|
-| RESUMED      	| RESUMED                          	|
-| STOPPED      	| STOPPED                          	|
-| FINISHED     	| FINISHED                         	|
-| FAILED       	| FAILED                           	|
+| IDLE         	| 'IDLE'                           	|
+| STARTED      	| 'STARTED'                        	|
+| DOWNLOADING  	| 'DOWNLOADING'                    	|
+| PAUSED       	| 'PAUSED'                         	|
+| RESUMED      	| 'RESUMED'                        	|
+| STOPPED      	| 'STOPPED'                        	|
+| FINISHED     	| 'FINISHED'                       	|
+| FAILED       	| 'FAILED'                         	|
 
 ## Test
 
