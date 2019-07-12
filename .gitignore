@@ -1,5 +1,6 @@
 .vscode
 node_modules
-*.log
-*.zip
 package-lock.json
+*.log*
+example/*
+!example/*.js

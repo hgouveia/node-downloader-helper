@@ -9,11 +9,12 @@ A simple http file downloader for node.js
 
 Features:
 - No thirdparty dependecies
-- Supports pause/resume
+- Pause/Resume
+- Retry on fail
 - Supports http/https
 - Supports http redirects
-- Support custom native http request options
-- Support pipes
+- Supports pipes
+- Custom native http request options
 - Usable on vanilla nodejs, electron, nwjs
 - Progress stats
 
@@ -29,7 +30,7 @@ For a more complete example check [example](example/) folder
 
 ```javascript
 const { DownloaderHelper } = require('node-downloader-helper');
-const dl = new DownloaderHelper('http://ipv4.download.thinkbroadband.com/1GB.zip', __dirname);
+const dl = new DownloaderHelper('http://www.ovh.net/files/1Gio.dat', __dirname);
 
 dl.on('end', () => console.log('Download Completed'))
 dl.start();
@@ -45,6 +46,7 @@ these are the default values
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     fileName: '', // Custom filename when saved
+    retry: false // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false // If the server does not return the "accept-ranges" header, can be force if it does support it
     override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
     httpRequestOptions: {}, // Override the http request options  
@@ -70,17 +72,19 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 
 ## Events
 
-| Name        	| Description                                                     	|
-|--------------	|-----------------------------------------------------------------	|
-| start        	| triggered when the .start method is called                      	|
-| download     	| triggered when the download starts                              	|
-| progress     	| triggered every 1 second while is downloading `callback(stats)` 	|
-| end          	| triggered when the downloading has finished                     	|
-| error        	| triggered when there is any error `callback(error)`              	|
-| pause        	| triggered when the .pause method is called                      	|
-| resume       	| triggered when the .resume method is called                     	|
-| stop         	| triggered when the .stop method is called                       	|
-| stateChanged 	| triggered when the state changes `callback(state)`               	|
+| Name        	| Description                                                     	                    |
+|--------------	|-----------------------------------------------------------------------------------	|
+| start        	| Emitted when the .start method is called                      	                    |
+| download     	| Emitted when the download starts                              	                    |
+| progress     	| Emitted every 1 second while is downloading `callback(stats)` 	                    |
+| retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
+| end          	| Emitted when the downloading has finished                     	                    |
+| error        	| Emitted when there is any error `callback(error)`              	                    |
+| timeout      	| Emitted when the underlying socket times out from inactivity.                         |
+| pause        	| Emitted when the .pause method is called                      	                    |
+| resume       	| Emitted when the .resume method is called                     	                    |
+| stop         	| Emitted when the .stop method is called                       	                    |
+| stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 
 progress `stats` object
 ```javascript
@@ -104,6 +108,7 @@ progress `stats` object
 | STOPPED      	| 'STOPPED'                        	|
 | FINISHED     	| 'FINISHED'                       	|
 | FAILED       	| 'FAILED'                         	|
+| RETRY      	| 'RETRY'                         	|
 
 ## Test
 
