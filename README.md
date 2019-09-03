@@ -1,6 +1,7 @@
 # node-downloader-helper
 
 [![NPM Version](https://img.shields.io/npm/v/node-downloader-helper.svg?style=flat-square "npm version")](https://www.npmjs.com/package/node-downloader-helper)
+![npm](https://img.shields.io/npm/dw/node-downloader-helper?style=flat-square "npm download")
 [![Build Status](https://img.shields.io/travis/hgouveia/node-downloader-helper/master.svg?style=flat-square "Build Status")](https://travis-ci.org/hgouveia/node-downloader-helper)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/hgouveia/node-downloader-helper/master.svg?label=windows&style=flat-square "Windows Build Status")](https://ci.appveyor.com/project/hgouveia/node-downloader-helper) [![Join the chat at https://gitter.im/node-downloader-helper/Lobby](https://badges.gitter.im/node-downloader-helper/Lobby.svg)](https://gitter.im/node-downloader-helper/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
@@ -68,6 +69,8 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | resume 	| resume the downloading if supported, if not it will start from the beginning 	|
 | stop   	| stop the downloading and remove the file                                     	|
 | pipe   	| readable.pipe(stream.Writable, options)                                     	|
+| getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
+| isResumable   	| return tru/false if the download can be resumable (available after the start phase) |
 
 
 ## Events
@@ -78,21 +81,43 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | download     	| Emitted when the download starts                              	                    |
 | progress     	| Emitted every 1 second while is downloading `callback(stats)` 	                    |
 | retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
-| end          	| Emitted when the downloading has finished                     	                    |
+| end          	| Emitted when the downloading has finished `callback(downloadInfo)`                    |
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
 | pause        	| Emitted when the .pause method is called                      	                    |
 | resume       	| Emitted when the .resume method is called                     	                    |
 | stop         	| Emitted when the .stop method is called                       	                    |
+| renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 
-progress `stats` object
+
+event **progress** `stats` object
 ```javascript
 {
     total:, // total size that needs to be downloaded in bytes
     downloaded:, // downloaded size in bytes
     progress:, // progress porcentage 0-100%
     speed: // download speed in bytes
+}
+```
+
+event **end** `downloadInfo` object
+```javascript
+{
+    totalSize:, // total file size got from the server
+    fileName:, 
+    filePath:,
+    downloadedSize:, // the total size downloaded
+}
+```
+
+event **renamed** `filePaths` object
+```javascript
+{
+    path:, // modified path name
+    fileName:, // modified file name
+    prevPath:, // original path name
+    prevFileName:, // original file name
 }
 ```
 

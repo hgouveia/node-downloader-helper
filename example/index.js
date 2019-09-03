@@ -24,7 +24,7 @@ const dl = new DownloaderHelper(url, __dirname, options);
 
 dl
     .once('download', () => pauseResumeTimer(dl, 5000))
-    .on('end', () => console.log('Download Completed'))
+    .on('end', downloadInfo => console.log('Download Completed: ', downloadInfo))
     .on('error', err => console.error('Something happend', err))
     .on('retry', (attempt, opts) => {
         console.log(
@@ -33,6 +33,7 @@ dl
         );
     })
     .on('stateChanged', state => console.log('State: ', state))
+    .on('renamed', filePaths => console.log('File Renamed to: ', filePaths.fileName))
     .on('progress', stats => {
         const progress = stats.progress.toFixed(1);
         const speed = byteHelper(stats.speed);

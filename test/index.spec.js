@@ -1,7 +1,7 @@
 const { DownloaderHelper } = require('../dist');
 const { expect } = require('chai');
 
-const downloadURL = 'http://ipv4.download.thinkbroadband.com/1GB.zip';
+const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 describe('DownloaderHelper', function () {
 
     describe('constructor', function () {

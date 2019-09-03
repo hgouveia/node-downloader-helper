@@ -166,17 +166,6 @@ export class DownloaderHelper extends EventEmitter {
 
     /**
      *
-     *
-     * @returns
-     * @memberof DownloaderHelper
-     */
-    isResumable() {
-        return this.__isResumable;
-    }
-
-
-    /**
-     *
      * @url https://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
      * @param {stream.Writable} stream
      * @param {Object} [options=null]
@@ -186,6 +175,27 @@ export class DownloaderHelper extends EventEmitter {
         this.__pipes.push({ stream, options });
         return this;
     }
+
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    getDownloadPath() {
+        return this.__filePath;
+    }
+
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    isResumable() {
+        return this.__isResumable;
+    }
+
 
     /**
      *
@@ -208,6 +218,8 @@ export class DownloaderHelper extends EventEmitter {
                 response.headers.hasOwnProperty('location') && response.headers.location) {
                 this.__isRedirected = true;
                 this.__initProtocol(response.headers.location);
+                // returns a new promise of the start process with the new url
+                // and resolve this current promise when the new operation finishes
                 return this.start()
                     .then(() => resolve(true))
                     .catch(err => {
@@ -244,10 +256,14 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __startDownload(response, resolve, reject) {
-        this.__fileName = this.__getFileNameFromHeaders(response.headers);
-        this.__filePath = this.__getFilePath(this.__fileName);
-        this.__fileStream = fs.createWriteStream(this.__filePath,
-            this.__isResumed ? { 'flags': 'a' } : {});
+        if (!this.__isResumed) {
+            const _fileName = this.__getFileNameFromHeaders(response.headers);
+            this.__filePath = this.__getFilePath(_fileName);
+            this.__fileName = this.__filePath.split(path.sep).pop();
+            this.__fileStream = fs.createWriteStream(this.__filePath, {});
+        } else {
+            this.__fileStream = fs.createWriteStream(this.__filePath, { 'flags': 'a' });
+        }
 
         // Start Downloading
         this.emit('download');
@@ -284,7 +300,12 @@ export class DownloaderHelper extends EventEmitter {
                     this.state !== this.__states.STOPPED) {
                     this.__setState(this.__states.FINISHED);
                     this.__pipes = [];
-                    this.emit('end');
+                    this.emit('end', {
+                        fileName: this.__fileName,
+                        filePath: this.__filePath,
+                        totalSize: this.__total,
+                        downloadedSize: this.__downloaded
+                    });
                 }
                 return resolve(true);
             });
@@ -404,10 +425,20 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __getFilePath(fileName) {
-        let filePath = path.join(this.__destFolder, fileName);
+        const currentPath = path.join(this.__destFolder, fileName);
+        let filePath = currentPath;
 
         if (!this.__opts.override && this.state !== this.__states.RESUMED) {
             filePath = this.__uniqFileNameSync(filePath);
+
+            if (currentPath !== filePath) {
+                this.emit('renamed', {
+                    'path': filePath,
+                    'fileName': filePath.split(path.sep).pop(),
+                    'prevPath': currentPath,
+                    'prevFileName': currentPath.split(path.sep).pop()
+                });
+            }
         }
 
         return filePath;
@@ -562,6 +593,7 @@ export class DownloaderHelper extends EventEmitter {
         }
 
         try {
+            // if access fail, the file doesnt exist yet
             fs.accessSync(path, fs.F_OK);
             const pathInfo = path.match(/(.*)(\([0-9]+\))(\..*)$/);
             let base = pathInfo ? pathInfo[1].trim() : path;
@@ -575,6 +607,7 @@ export class DownloaderHelper extends EventEmitter {
                 ext = '';
             }
 
+            // generate a new path until it doesn't exist
             return this.__uniqFileNameSync(base + ' (' + (++suffix) + ')' + ext);
         } catch (err) {
             return path;
