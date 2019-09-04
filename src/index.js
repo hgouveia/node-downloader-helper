@@ -72,7 +72,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     start() {
@@ -97,7 +97,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     pause() {
@@ -115,7 +115,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     resume() {
@@ -132,7 +132,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     stop() {
@@ -169,6 +169,7 @@ export class DownloaderHelper extends EventEmitter {
      * @url https://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
      * @param {stream.Writable} stream
      * @param {Object} [options=null]
+     * @returns {DownloaderHelper}
      * @memberof DownloaderHelper
      */
     pipe(stream, options = null) {
@@ -179,7 +180,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {String}
      * @memberof DownloaderHelper
      */
     getDownloadPath() {
@@ -189,7 +190,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Boolean}
      * @memberof DownloaderHelper
      */
     isResumable() {
@@ -200,9 +201,9 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @param {*} resolve
-     * @param {*} reject
-     * @returns
+     * @param {Promise.resolve} resolve
+     * @param {Promise.reject} reject
+     * @returns {http.ClientRequest}
      * @memberof DownloaderHelper
      */
     __downloadRequest(resolve, reject) {
@@ -250,9 +251,9 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @param {*} response
-     * @param {*} resolve
-     * @param {*} reject
+     * @param {http.IncomingMessage} response
+     * @param {Promise.resolve} resolve
+     * @param {Promise.reject} reject
      * @memberof DownloaderHelper
      */
     __startDownload(response, resolve, reject) {
@@ -316,7 +317,7 @@ export class DownloaderHelper extends EventEmitter {
      *
      *
      * @param {Promise.reject} reject
-     * @returns {Function}
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     __onError(resolve, reject) {
@@ -341,7 +342,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @returns
+     * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
     __retry() {
@@ -391,16 +392,12 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
-     * @param {*} headers
-     * @returns
+     * @param {Object} headers
+     * @returns {String}
      * @memberof DownloaderHelper
      */
     __getFileNameFromHeaders(headers) {
         let fileName = '';
-
-        if (this.__opts.fileName) {
-            return this.__opts.fileName;
-        }
 
         // Get Filename
         if (headers.hasOwnProperty('content-disposition') &&
@@ -414,7 +411,9 @@ export class DownloaderHelper extends EventEmitter {
             fileName = path.basename(URL.parse(this.requestURL).pathname);
         }
 
-        return fileName;
+        return (this.__opts.fileName)
+            ? this.__getFileNameFromOpts(fileName)
+            : fileName;
     }
 
     /**
@@ -442,6 +441,47 @@ export class DownloaderHelper extends EventEmitter {
         }
 
         return filePath;
+    }
+
+
+    /**
+     *
+     *
+     * @param {String} fileName
+     * @returns {String}
+     * @memberof DownloaderHelper
+     */
+    __getFileNameFromOpts(fileName) {
+
+        if (!this.__opts.fileName) {
+            return fileName;
+        } else if (typeof this.__opts.fileName === 'string') {
+            return this.__opts.fileName;
+        } else if (typeof this.__opts.fileName === 'function') {
+            const currentPath = path.join(this.__destFolder, fileName);
+            return this.__opts.fileName(fileName, currentPath);
+        } else if (typeof this.__opts.fileName === 'object') {
+
+            const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string} 
+            const name = fileNameOpts.name;
+            const ext = fileNameOpts.hasOwnProperty('ext')
+                ? fileNameOpts.ext : false;
+
+            if (typeof ext === 'string') {
+                return `${name}.${ext}`;
+            } else if (typeof ext === 'boolean') {
+                // true: use the 'name' as full file name
+                // false (default) only replace the name
+                if (ext) {
+                    return name;
+                } else {
+                    const _ext = fileName.split('.').pop();
+                    return `${name}.${_ext}`;
+                }
+            }
+        }
+
+        return fileName;
     }
 
     /**
@@ -494,12 +534,12 @@ export class DownloaderHelper extends EventEmitter {
      * @param {String} method
      * @param {String} url
      * @param {Object} [headers={}]
-     * @returns
+     * @returns {Object}
      * @memberof DownloaderHelper
      */
     __getOptions(method, url, headers = {}) {
-        let urlParse = URL.parse(url);
-        let options = {
+        const urlParse = URL.parse(url);
+        const options = {
             protocol: urlParse.protocol,
             host: urlParse.hostname,
             port: urlParse.port,
@@ -518,7 +558,7 @@ export class DownloaderHelper extends EventEmitter {
      *
      *
      * @param {String} filePath
-     * @returns
+     * @returns {Number}
      * @memberof DownloaderHelper
      */
     __getFilesizeInBytes(filePath) {
@@ -532,7 +572,7 @@ export class DownloaderHelper extends EventEmitter {
      *
      * @param {String} url
      * @param {String} destFolder
-     * @returns
+     * @returns {Boolean|Error}
      * @memberof DownloaderHelper
      */
     __validate(url, destFolder) {
@@ -584,7 +624,7 @@ export class DownloaderHelper extends EventEmitter {
      *
      *
      * @param {String} path
-     * @returns
+     * @returns {String}
      * @memberof DownloaderHelper
      */
     __uniqFileNameSync(path) {

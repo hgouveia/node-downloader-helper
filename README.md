@@ -46,7 +46,7 @@ these are the default values
 {
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
-    fileName: '', // Custom filename when saved
+    fileName: string|cb(fileName, filePath)|{name, ext}, // Custom filename when saved
     retry: false // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false // If the server does not return the "accept-ranges" header, can be force if it does support it
     override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
@@ -54,6 +54,11 @@ these are the default values
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
 }
 ```
+
+for `fileName` you can provide 3 types of parameter
+ - **string**: will use the full string as the filename including extension
+ - **callback(fileName, filePath)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;` 
+ - **object**: this object must contain a `name` attribute and an optional `ext` attribute, the `ext` attribute can be an string without dot(`.`) or a boolean where `true` use the `name` as full file name (same as just giving an string to the `fileName` parameter) or false *(default)* will only replace the name and keep the original extension, for example if the original name is `myfile.zip` and the option is `{name: 'somename'}` the output will be `somename.zip`
 
 for `httpRequestOptions` the available options are detailed in here https://nodejs.org/api/http.html#http_http_request_options_callback
 
