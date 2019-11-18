@@ -230,9 +230,11 @@ export class DownloaderHelper extends EventEmitter {
                     });
             }
 
-            // check if response is success
+            // check if response wans't a success
             if (response.statusCode !== 200 && response.statusCode !== 206) {
-                const err = new Error('Response status was ' + response.statusCode);
+                const err = new Error(`Response status was ${response.statusCode}`);
+                err.status = response.statusCode || 0;
+                err.body = response.body || '';
                 this.emit('error', err);
                 return reject(err);
             }
@@ -281,6 +283,7 @@ export class DownloaderHelper extends EventEmitter {
 
         this.__fileStream.on('finish', this.__onFinished(resolve, reject));
         this.__fileStream.on('error', this.__onError(resolve, reject));
+        response.on('error', this.__onError(resolve, reject));
     }
 
     /**

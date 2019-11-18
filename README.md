@@ -126,6 +126,15 @@ event **renamed** `filePaths` object
 }
 ```
 
+event **error** `error` object
+```javascript
+{
+    message:, // Error message
+    status:, // Http status response if available
+    body:, // Http body response if available
+}
+```
+
 ## States
 
 | Name         	| Value                            	|
