@@ -269,7 +269,13 @@ export class DownloaderHelper extends EventEmitter {
         }
 
         // Start Downloading
-        this.emit('download');
+        this.emit('download', {
+            fileName: this.__fileName,
+            filePath: this.__filePath,
+            totalSize: this.__total,
+            isResumed: this.__isResumed,
+            downloadedSize: this.__downloaded
+        });
         this.__isResumed = false;
         this.__isRedirected = false;
         this.__setState(this.__states.DOWNLOADING);

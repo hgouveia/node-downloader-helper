@@ -83,7 +83,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | Name        	| Description                                                     	                    |
 |--------------	|-----------------------------------------------------------------------------------	|
 | start        	| Emitted when the .start method is called                      	                    |
-| download     	| Emitted when the download starts                              	                    |
+| download     	| Emitted when the download starts `callback(downloadInfo)`        	                    |
 | progress     	| Emitted every 1 second while is downloading `callback(stats)` 	                    |
 | retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
 | end          	| Emitted when the downloading has finished `callback(downloadInfo)`                    |
@@ -95,6 +95,17 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 
+
+event **download** `downloadInfo` object
+```javascript
+{
+    totalSize:, // total file size got from the server
+    fileName:, // assigned name
+    filePath:, // download path
+    isResumed:, // if the download is a resume,
+    downloadedSize:, // the downloaded amount (only if is resumed otherwise always 0)
+}
+```
 
 event **progress** `stats` object
 ```javascript

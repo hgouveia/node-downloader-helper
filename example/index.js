@@ -24,6 +24,7 @@ const dl = new DownloaderHelper(url, __dirname, options);
 
 dl
     .once('download', () => pauseResumeTimer(dl, 5000))
+    .on('download', downloadInfo => console.log('Download Begins: ', downloadInfo))
     .on('end', downloadInfo => console.log('Download Completed: ', downloadInfo))
     .on('error', err => console.error('Something happend', err))
     .on('retry', (attempt, opts) => {
