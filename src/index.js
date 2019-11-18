@@ -167,14 +167,14 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      * @url https://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
-     * @param {stream.Writable} stream
+     * @param {stream.Readable} stream
      * @param {Object} [options=null]
-     * @returns {DownloaderHelper}
+     * @returns {ReadableStream}
      * @memberof DownloaderHelper
      */
     pipe(stream, options = null) {
         this.__pipes.push({ stream, options });
-        return this;
+        return stream;
     }
 
     /**
@@ -259,6 +259,8 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __startDownload(response, resolve, reject) {
+        let readable = response;
+
         if (!this.__isResumed) {
             const _fileName = this.__getFileNameFromHeaders(response.headers);
             this.__filePath = this.__getFilePath(_fileName);
@@ -281,15 +283,18 @@ export class DownloaderHelper extends EventEmitter {
         this.__setState(this.__states.DOWNLOADING);
         this.__statsEstimate.time = new Date();
 
-        response.pipe(this.__fileStream);
-        response.on('data', chunk => this.__calculateStats(chunk.length));
-
         // Add externals pipe
-        this.__pipes.forEach(pipe => response.pipe(pipe.stream, pipe.options));
+        this.__pipes.forEach(pipe => {
+            readable.pipe(pipe.stream, pipe.options);
+            readable = pipe.stream;
+        });
+
+        readable.pipe(this.__fileStream);
+        readable.on('data', chunk => this.__calculateStats(chunk.length));
+        readable.on('error', this.__onError(resolve, reject));
 
         this.__fileStream.on('finish', this.__onFinished(resolve, reject));
         this.__fileStream.on('error', this.__onError(resolve, reject));
-        response.on('error', this.__onError(resolve, reject));
     }
 
     /**
