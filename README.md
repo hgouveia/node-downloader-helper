@@ -47,8 +47,10 @@ these are the default values
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     fileName: string|cb(fileName, filePath)|{name, ext}, // Custom filename when saved
-    retry: false // { maxRetries: number, delay: number in ms } or false to disable (default)
-    forceResume: false // If the server does not return the "accept-ranges" header, can be force if it does support it
+    retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
+    forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
+    removeOnStop: true, // remove the file when is stopped (default:true)
+    removeOnFail: true, // remove the file when fail (default:true)
     override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
@@ -73,7 +75,9 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | pause  	| pause the downloading                                                        	|
 | resume 	| resume the downloading if supported, if not it will start from the beginning 	|
 | stop   	| stop the downloading and remove the file                                     	|
-| pipe   	| readable.pipe(stream.Writable, options)                                     	|
+| pipe   	| `readable.pipe(stream.Readable, options) : stream.Readable`                 	|
+| unpipe   	| `(stream)`  if not stream is not specified, then all pipes are detached.      |
+| updateOptions   	| `(options)` updates the options, can be use on pause/resume events    |
 | getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
 | isResumable   	| return tru/false if the download can be resumable (available after the start phase) |
 
@@ -90,7 +94,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
 | pause        	| Emitted when the .pause method is called                      	                    |
-| resume       	| Emitted when the .resume method is called                     	                    |
+| resume       	| Emitted when the .resume method is called `callback(isResume)`                     	                    |
 | stop         	| Emitted when the .stop method is called                       	                    |
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
@@ -120,9 +124,10 @@ event **progress** `stats` object
 event **end** `downloadInfo` object
 ```javascript
 {
-    totalSize:, // total file size got from the server
     fileName:, 
     filePath:,
+    totalSize:, // total file size got from the server
+    onDiskSize, // total size of file on the disk
     downloadedSize:, // the total size downloaded
 }
 ```

@@ -42,18 +42,20 @@ export class DownloaderHelper extends EventEmitter {
             fileName: '',
             override: false,
             forceResume: false,
+            removeOnStop: true,
+            removeOnFail: true,
             httpRequestOptions: {},
             httpsRequestOptions: {}
         };
-
+        this.__opts = Object.assign({}, this.__defaultOpts);
         this.__pipes = [];
         this.__total = 0;
         this.__downloaded = 0;
         this.__progress = 0;
         this.__retryCount = 0;
         this.__states = DH_STATES;
-        this.__opts = Object.assign({}, this.__defaultOpts, options);
-        this.__headers = this.__opts.headers;
+        this.__request = null;
+        this.__response = null;
         this.__isResumed = false;
         this.__isResumable = false;
         this.__isRedirected = false;
@@ -65,8 +67,7 @@ export class DownloaderHelper extends EventEmitter {
         };
         this.__fileName = '';
         this.__filePath = '';
-        this.__options = this.__getOptions(this.__opts.method, url, this.__opts.headers);
-        this.__initProtocol(url);
+        this.updateOptions(options);
     }
 
     /**
@@ -84,6 +85,7 @@ export class DownloaderHelper extends EventEmitter {
             }
 
             // Start the Download
+            this.__response = null;
             this.__request = this.__downloadRequest(resolve, reject);
 
             // Error Handling
@@ -104,9 +106,12 @@ export class DownloaderHelper extends EventEmitter {
         if (this.__request) {
             this.__request.abort();
         }
-        if (this.__fileStream) {
-            this.__fileStream.close();
+
+        if (this.__response) {
+            this.__response.unpipe();
+            this.__pipes.forEach(pipe => pipe.stream.unpipe());
         }
+
         this.__setState(this.__states.PAUSED);
         this.emit('pause');
         return Promise.resolve(true);
@@ -122,10 +127,9 @@ export class DownloaderHelper extends EventEmitter {
         this.__setState(this.__states.RESUMED);
         if (this.__isResumable) {
             this.__isResumed = true;
-            this.__downloaded = this.__getFilesizeInBytes(this.__filePath);
             this.__options['headers']['range'] = 'bytes=' + this.__downloaded + '-';
         }
-        this.emit('resume');
+        this.emit('resume', this.__isResumed);
         return this.start();
     }
 
@@ -136,17 +140,11 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     stop() {
-        if (this.__request) {
-            this.__request.abort();
-        }
-        if (this.__fileStream) {
-            this.__fileStream.close();
-        }
-        this.__setState(this.__states.STOPPED);
-        return new Promise((resolve, reject) => {
+        const removeFile = () => new Promise((resolve, reject) => {
             fs.access(this.__filePath, _accessErr => {
                 // if can't access, probably is not created yet
                 if (_accessErr) {
+                    this.__setState(this.__states.STOPPED);
                     this.emit('stop');
                     return resolve(true);
                 }
@@ -157,24 +155,65 @@ export class DownloaderHelper extends EventEmitter {
                         this.emit('error', _err);
                         return reject(_err);
                     }
+                    this.__setState(this.__states.STOPPED);
                     this.emit('stop');
                     resolve(true);
                 });
             });
         });
+
+        if (this.__request) {
+            this.__request.abort();
+        }
+
+        return this.__closeFileStream().then(() => {
+            if (this.__opts.removeOnStop) {
+                return removeFile();
+            }
+            this.__setState(this.__states.STOPPED);
+            this.emit('stop');
+            return Promise.resolve(true);
+        });
     }
 
     /**
-     *
+     * Add pipes to the pipe list that will be applied later when the download starts
      * @url https://nodejs.org/api/stream.html#stream_readable_pipe_destination_options
-     * @param {stream.Readable} stream
+     * @param {stream.Readable} stream https://nodejs.org/api/stream.html#stream_class_stream_readable
      * @param {Object} [options=null]
-     * @returns {ReadableStream}
+     * @returns {stream.Readable}
      * @memberof DownloaderHelper
      */
     pipe(stream, options = null) {
         this.__pipes.push({ stream, options });
         return stream;
+    }
+
+    /**
+     * Unpipe an stream , if a stream is not specified, then all pipes are detached.
+     *
+     * @url https://nodejs.org/api/stream.html#stream_readable_unpipe_destination
+     * @param {stream.Readable} [stream=null]
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    unpipe(stream = null) {
+        const unpipeStream = _stream => (this.__response)
+            ? this.__response.unpipe(_stream)
+            : _stream.unpipe();
+
+
+        if (stream) {
+            const pipe = this.__pipes.find(p => p.stream === stream);
+            if (pipe) {
+                unpipeStream(stream);
+                this.__pipes = this.__pipes.filter(p => p.stream !== stream);
+            }
+            return;
+        }
+
+        this.__pipes.forEach(p => unpipeStream(p.stream));
+        this.__pipes = [];
     }
 
     /**
@@ -201,6 +240,19 @@ export class DownloaderHelper extends EventEmitter {
     /**
      *
      *
+     * @param {Object} [options={}]
+     * @memberof DownloaderHelper
+     */
+    updateOptions(options) {
+        this.__opts = Object.assign({}, this.__opts, options);
+        this.__headers = this.__opts.headers;
+        this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
+        this.__initProtocol(this.url);
+    }
+
+    /**
+     *
+     *
      * @param {Promise.resolve} resolve
      * @param {Promise.reject} reject
      * @returns {http.ClientRequest}
@@ -208,6 +260,8 @@ export class DownloaderHelper extends EventEmitter {
      */
     __downloadRequest(resolve, reject) {
         return this.__protocol.request(this.__options, response => {
+            this.__response = response;
+
             //Stats
             if (!this.__isResumed) {
                 this.__total = parseInt(response.headers['content-length']);
@@ -284,17 +338,28 @@ export class DownloaderHelper extends EventEmitter {
         this.__statsEstimate.time = new Date();
 
         // Add externals pipe
+        readable.on('data', chunk => this.__calculateStats(chunk.length));
         this.__pipes.forEach(pipe => {
             readable.pipe(pipe.stream, pipe.options);
             readable = pipe.stream;
         });
-
         readable.pipe(this.__fileStream);
-        readable.on('data', chunk => this.__calculateStats(chunk.length));
         readable.on('error', this.__onError(resolve, reject));
 
         this.__fileStream.on('finish', this.__onFinished(resolve, reject));
         this.__fileStream.on('error', this.__onError(resolve, reject));
+    }
+
+
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    __hasFinished() {
+        return this.state !== this.__states.PAUSED &&
+            this.state !== this.__states.STOPPED;
     }
 
     /**
@@ -311,20 +376,40 @@ export class DownloaderHelper extends EventEmitter {
                 if (_err) {
                     return reject(_err);
                 }
-                if (this.state !== this.__states.PAUSED &&
-                    this.state !== this.__states.STOPPED) {
+                if (this.__hasFinished()) {
                     this.__setState(this.__states.FINISHED);
                     this.__pipes = [];
                     this.emit('end', {
                         fileName: this.__fileName,
                         filePath: this.__filePath,
                         totalSize: this.__total,
-                        downloadedSize: this.__downloaded
+                        onDiskSize: this.__getFilesizeInBytes(this.__filePath),
+                        downloadedSize: this.__downloaded,
                     });
                 }
                 return resolve(true);
             });
         };
+    }
+
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    __closeFileStream() {
+        if (!this.__fileStream) {
+            return Promise.resolve(true);
+        }
+        return new Promise((resolve, reject) => {
+            this.__fileStream.close(err => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve(true);
+            });
+        });
     }
 
     /**
@@ -337,7 +422,11 @@ export class DownloaderHelper extends EventEmitter {
     __onError(resolve, reject) {
         return err => {
             if (this.__fileStream) {
-                this.__fileStream.close(() => fs.unlink(this.__filePath, () => reject(err)));
+                this.__fileStream.close(() => {
+                    if (this.__opts.removeOnFail) {
+                        fs.unlink(this.__filePath, () => reject(err));
+                    }
+                });
             }
             this.__pipes = [];
             this.__setState(this.__states.FAILED);
@@ -383,7 +472,7 @@ export class DownloaderHelper extends EventEmitter {
         this.emit('retry', this.__retryCount, this.__opts.retry);
 
         return new Promise((resolve) =>
-            setTimeout(() => resolve(this.start()), this.__opts.retry.delay)
+            setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.start()), this.__opts.retry.delay)
         );
     }
 

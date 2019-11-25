@@ -21,12 +21,7 @@ module.exports.pauseResumeTimer = function (_dl, wait) {
 
         _dl.pause()
             .then(() => console.log(`Paused for ${wait / 1000} seconds`))
-            .then(() => setTimeout(() => {
-                if (!_dl.isResumable()) {
-                    console.warn("This URL doesn't support resume, it will start from the beginning");
-                }
-                return _dl.resume();
-            }, wait));
+            .then(() => setTimeout(() => _dl.resume(), wait));
 
     }, wait);
 };
