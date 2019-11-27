@@ -79,6 +79,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | pipe   	| `readable.pipe(stream.Readable, options) : stream.Readable`                 	|
 | unpipe   	| `(stream)`  if not stream is not specified, then all pipes are detached.      |
 | updateOptions   	| `(options)` updates the options, can be use on pause/resume events    |
+| getStats  | returns `stats` from the current download, these are the same `stats` sent via progress event  |
 | getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
 | isResumable   	| return tru/false if the download can be resumable (available after the start phase) |
 

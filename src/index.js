@@ -256,6 +256,20 @@ export class DownloaderHelper extends EventEmitter {
         this.__initProtocol(this.url);
     }
 
+    /**
+     *
+     *
+     * @returns
+     * @memberof DownloaderHelper
+     */
+    getStats() {
+        return {
+            total: this.__total,
+            downloaded: this.__downloaded,
+            progress: this.__progress,
+            speed: this.__statsEstimate.bytes
+        };
+    }
 
     /**
      * Resolve pending promises from Start method
@@ -633,12 +647,7 @@ export class DownloaderHelper extends EventEmitter {
         }
 
         // emit the progress
-        this.emit('progress', {
-            total: this.__total,
-            downloaded: this.__downloaded,
-            progress: this.__progress,
-            speed: this.__statsEstimate.bytes
-        });
+        this.emit('progress', this.getStats());
     }
 
     /**
