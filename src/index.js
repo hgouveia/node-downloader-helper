@@ -54,6 +54,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__progress = 0;
         this.__retryCount = 0;
         this.__states = DH_STATES;
+        this.__promise = null;
         this.__request = null;
         this.__response = null;
         this.__isResumed = false;
@@ -86,6 +87,7 @@ export class DownloaderHelper extends EventEmitter {
 
             // Start the Download
             this.__response = null;
+            this.__promise = { resolve, reject };
             this.__request = this.__downloadRequest(resolve, reject);
 
             // Error Handling
@@ -112,8 +114,10 @@ export class DownloaderHelper extends EventEmitter {
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
         }
 
+        this.__resolvePending();
         this.__setState(this.__states.PAUSED);
         this.emit('pause');
+
         return Promise.resolve(true);
     }
 
@@ -140,12 +144,16 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     stop() {
+        const emit = () => {
+            this.__resolvePending();
+            this.__setState(this.__states.STOPPED);
+            this.emit('stop');
+        };
         const removeFile = () => new Promise((resolve, reject) => {
             fs.access(this.__filePath, _accessErr => {
                 // if can't access, probably is not created yet
                 if (_accessErr) {
-                    this.__setState(this.__states.STOPPED);
-                    this.emit('stop');
+                    emit();
                     return resolve(true);
                 }
 
@@ -155,8 +163,7 @@ export class DownloaderHelper extends EventEmitter {
                         this.emit('error', _err);
                         return reject(_err);
                     }
-                    this.__setState(this.__states.STOPPED);
-                    this.emit('stop');
+                    emit();
                     resolve(true);
                 });
             });
@@ -170,8 +177,7 @@ export class DownloaderHelper extends EventEmitter {
             if (this.__opts.removeOnStop) {
                 return removeFile();
             }
-            this.__setState(this.__states.STOPPED);
-            this.emit('stop');
+            emit();
             return Promise.resolve(true);
         });
     }
@@ -248,6 +254,21 @@ export class DownloaderHelper extends EventEmitter {
         this.__headers = this.__opts.headers;
         this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
+    }
+
+
+    /**
+     * Resolve pending promises from Start method
+     *
+     * @memberof DownloaderHelper
+     */
+    __resolvePending() {
+        if (!this.__promise) {
+            return;
+        }
+        const { resolve } = this.__promise;
+        this.__promise = null;
+        return resolve(true);
     }
 
     /**
