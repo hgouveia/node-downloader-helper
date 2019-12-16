@@ -38,6 +38,18 @@ dl.on('end', () => console.log('Download Completed'))
 dl.start();
 ```
 
+### CLI
+
+This can be used as standalone CLI downloader
+
+Install `npm i -g node-downloader-helper`
+
+Usage: `ndh [folder] [url]`
+
+```bash
+$ ndh ./folder http://url
+```
+
 ## Options
 
 Download Helper constructor also allow a 3rd parameter to set some options `constructor(url, destinationFolder, options)`,
@@ -116,6 +128,7 @@ event **download** `downloadInfo` object
 event **progress** `stats` object
 ```javascript
 {
+    name:, // file name
     total:, // total size that needs to be downloaded in bytes
     downloaded:, // downloaded size in bytes
     progress:, // progress porcentage 0-100%

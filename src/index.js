@@ -265,6 +265,7 @@ export class DownloaderHelper extends EventEmitter {
     getStats() {
         return {
             total: this.__total,
+            name: this.__fileName,
             downloaded: this.__downloaded,
             progress: this.__progress,
             speed: this.__statsEstimate.bytes

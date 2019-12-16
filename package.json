@@ -32,6 +32,9 @@
   },
   "homepage": "https://github.com/hgouveia/node-downloader-helper",
   "license": "MIT",
+  "bin": {
+    "ndh": "bin/ndh"
+  },
   "devDependencies": {
     "babel-cli": "^6.26.0",
     "babel-preset-env": "^1.6.1",

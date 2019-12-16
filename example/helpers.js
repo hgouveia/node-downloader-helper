@@ -1,5 +1,16 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
+const { URL } = require('url');
+const { existsSync } = require('fs');
 const { DH_STATES } = require('../dist');
+
+// Console colors
+module.exports.COLOR_NC = '\033[0m'; // No Color \e
+module.exports.COLOR_RED = '\033[0;31m';
+module.exports.COLOR_GREEN = '\033[0;32m';
+module.exports.COLOR_YELLOW = '\033[0;33m';
+module.exports.COLOR_BLUE = '\033[0;34m';
+module.exports.COLOR_MAGENTA = '\033[0;35m';
+module.exports.COLOR_CYAN = '\033[0;36m';
 
 // https://gist.github.com/thomseddon/3511330
 module.exports.byteHelper = function (value) {
@@ -24,4 +35,32 @@ module.exports.pauseResumeTimer = function (_dl, wait) {
             .then(() => setTimeout(() => _dl.resume(), wait));
 
     }, wait);
+};
+
+
+module.exports.color = function (color, text) {
+    return `${color}${text}${module.exports.COLOR_NC}`;
+};
+
+module.exports.inlineLog = function (msg) {
+    process.stdout.clearLine();
+    process.stdout.cursorTo(0);
+    process.stdout.write(msg);
+};
+
+module.exports.isValidUrl = function (url) {
+    try {
+        new URL(url);
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+module.exports.isValidPath = function (path) {
+    try {
+        return existsSync(path);
+    } catch (_) {
+        return false;
+    }
 };

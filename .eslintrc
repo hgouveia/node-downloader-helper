@@ -1,6 +1,9 @@
 {
     "parserOptions": {
-        "sourceType": "module"
+        "sourceType": "module",
+        "ecmaFeatures": {
+            "globalReturn": true
+        }
     },
     "env": {
         "node": true,
