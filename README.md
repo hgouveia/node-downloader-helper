@@ -65,6 +65,7 @@ these are the default values
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)
     override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
+    skip: false, // if true and `override` is also true, will skip the download if the file already exists
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
 }
@@ -101,6 +102,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | Name        	| Description                                                     	                    |
 |--------------	|-----------------------------------------------------------------------------------	|
 | start        	| Emitted when the .start method is called                      	                    |
+| skip        	| Emitted when the download is skipped because the file already exists                  |
 | download     	| Emitted when the download starts `callback(downloadInfo)`        	                    |
 | progress     	| Emitted every 1 second while is downloading `callback(stats)` 	                    |
 | retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
@@ -113,6 +115,13 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 
+event **skip** `paths` object
+```javascript
+{
+    fileName:, // original file name
+    filePath:, // original path name
+}
+```
 
 event **download** `downloadInfo` object
 ```javascript
@@ -171,6 +180,7 @@ event **error** `error` object
 | Name         	| Value                            	|
 |--------------	|----------------------------------	|
 | IDLE         	| 'IDLE'                           	|
+| SKIPPED       | 'SKIPPED'                         |
 | STARTED      	| 'STARTED'                        	|
 | DOWNLOADING  	| 'DOWNLOADING'                    	|
 | PAUSED       	| 'PAUSED'                         	|

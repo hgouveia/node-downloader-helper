@@ -7,6 +7,7 @@ import * as URL from 'url';
 
 export const DH_STATES = {
     IDLE: 'IDLE',
+    SKIPPED: 'SKIPPED',
     STARTED: 'STARTED',
     DOWNLOADING: 'DOWNLOADING',
     RETRY: 'RETRY',
@@ -45,7 +46,8 @@ export class DownloaderHelper extends EventEmitter {
             removeOnStop: true,
             removeOnFail: true,
             httpRequestOptions: {},
-            httpsRequestOptions: {}
+            httpsRequestOptions: {},
+            skip: false
         };
         this.__opts = Object.assign({}, this.__defaultOpts);
         this.__pipes = [];
@@ -354,6 +356,14 @@ export class DownloaderHelper extends EventEmitter {
         if (!this.__isResumed) {
             const _fileName = this.__getFileNameFromHeaders(response.headers);
             this.__filePath = this.__getFilePath(_fileName);
+            if (this.__opts.skip && fs.existsSync(this.__filePath)) {
+                this.emit('skip', {
+                    fileName: this.__fileName,
+                    filePath: this.__filePath
+                })
+                this.state = this.__states.SKIPPED;
+                return resolve(true);
+            }
             this.__fileName = this.__filePath.split(path.sep).pop();
             this.__fileStream = fs.createWriteStream(this.__filePath, {});
         } else {
