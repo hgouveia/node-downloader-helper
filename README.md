@@ -124,7 +124,7 @@ event **skip** `skipInfo` object
     totalSize:, // total file size got from the server
     fileName:, // original file name
     filePath:, // original path name
-    downloadedSize:, // the downloaded amount (only if is resumed otherwise always 0)
+    downloadedSize:, // the downloaded amount
 }
 ```
 
