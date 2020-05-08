@@ -64,8 +64,7 @@ these are the default values
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)
-    override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
-    skip: false, // if true and `override` is also true, will skip the download if the file already exists
+    override: boolean|{skip, skipSmaller}, // Behavior when local file already exists
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
 }
@@ -75,6 +74,10 @@ for `fileName` you can provide 3 types of parameter
  - **string**: will use the full string as the filename including extension
  - **callback(fileName, filePath)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;` 
  - **object**: this object must contain a `name` attribute and an optional `ext` attribute, the `ext` attribute can be an string without dot(`.`) or a boolean where `true` use the `name` as full file name (same as just giving an string to the `fileName` parameter) or false *(default)* will only replace the name and keep the original extension, for example if the original name is `myfile.zip` and the option is `{name: 'somename'}` the output will be `somename.zip`
+
+for `override` you can provide 2 types of parameter
+- **boolean**: `true` to override existing local file, `false` to append '(number)' to new file name
+- **object**: object with properties `skip` (boolean): whether to skip download if file exists, and `skipSmaller` (boolean): whether to skip download if file exists but is smaller. Both default to `false`, for the equivalent of `override: true`.
 
 for `httpRequestOptions` the available options are detailed in here https://nodejs.org/api/http.html#http_http_request_options_callback
 
@@ -115,11 +118,13 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 
-event **skip** `paths` object
+event **skip** `skipInfo` object
 ```javascript
 {
+    totalSize:, // total file size got from the server
     fileName:, // original file name
     filePath:, // original path name
+    downloadedSize:, // the downloaded amount (only if is resumed otherwise always 0)
 }
 ```
 
