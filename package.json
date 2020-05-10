@@ -8,7 +8,7 @@
     "lint": "./node_modules/.bin/eslint src",
     "build": "./node_modules/.bin/babel --presets minify ./src/index.js -o ./dist/index.js",
     "watch": "./node_modules/.bin/babel --watch ./src/index.js -o ./dist/index.js",
-    "test": "npm run lint && npm run build && \"node_modules/.bin/mocha\""
+    "test": "npm run lint && npm run build && jest"
   },
   "pre-commit": [
     "test"
@@ -37,11 +37,12 @@
   },
   "devDependencies": {
     "babel-cli": "^6.26.0",
+    "babel-jest": "^23.6.0",
     "babel-preset-env": "^1.6.1",
     "babel-preset-minify": "^0.5.0",
     "chai": "^4.1.2",
     "eslint": "^4.19.1",
-    "mocha": "^5.1.1",
+    "jest": "^24.9.0",
     "pre-commit": "^1.2.2"
   }
 }

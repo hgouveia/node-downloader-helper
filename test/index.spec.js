@@ -1,15 +1,22 @@
 const { join } = require('path');
 const { DownloaderHelper } = require('../dist');
 const { expect } = require('chai');
-const { homedir, tmpdir } = require('os');
-const { chmodSync, closeSync, mkdirSync, openSync, rmdirSync, unlinkSync } = require('fs');
+const { homedir } = require('os');
+const fs = require('fs');
+jest.mock('fs');
 
 const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 describe('DownloaderHelper', function () {
 
     describe('constructor', function () {
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
 
         it('should create a instance', function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+
             expect(function () {
                 const dl = new DownloaderHelper(downloadURL, __dirname);
             }).to.not.throw();
@@ -48,30 +55,23 @@ describe('DownloaderHelper', function () {
         });
 
         it("should fail if destination folder is not a directory", function () {
-            const tmpFile = join(tmpdir(), 'dh_' + new Date().getTime());
-
-            after(() => {
-                // Clean temporary file after running the test
-                try { unlinkSync(tmpFile); } catch(e) { /* silent catch */ }
-            });
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => false });
             
             expect(function () {
-                closeSync(openSync(tmpFile, 'w'));
-                const dl = new DownloaderHelper(downloadURL, tmpFile);
+                const dl = new DownloaderHelper(downloadURL, __dirname);
             }).to.throw('Destination Folder must be a directory');
         });
 
         it("should fail if destination folder is not writable", function () {
-            const tmpDir = join(tmpdir(), 'dh_' + new Date().getTime() + 1);
-
-            after(() => {
-                // Clean temporary directory after running the test
-                try { rmdirSync(tmpDir); } catch(e) { /* silent catch */ }
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+            fs.accessSync.mockImplementation(() => {
+                throw new Error();
             });
+
             expect(function () {
-                mkdirSync(tmpDir);
-                chmodSync(tmpDir, 0o400);
-                const dl = new DownloaderHelper(downloadURL, tmpDir);
+                const dl = new DownloaderHelper(downloadURL, __dirname);
             }).to.throw('Destination Folder must be writable');
         });
 
@@ -81,6 +81,8 @@ describe('DownloaderHelper', function () {
         let fileName, fileNameExt;
 
         beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
             fileName = 'myfilename.zip';
             fileNameExt = 'zip';
         });
