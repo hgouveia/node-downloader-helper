@@ -14,7 +14,11 @@ const options = {
     },
     retry: { maxRetries: 3, delay: 3000 }, // { maxRetries: number, delay: number in ms } or false to disable (default)
     fileName: filename => `${filename}.gz`, // Custom filename when saved
-    override: false, // if true it will override the file, otherwise will append '(number)' to the end of file
+    /* override
+    object: { skip: skip if already exists, skipSmaller: skip if smaller }
+    boolean: true to override file, false to append '(number)' to new file name
+    */
+    override: { skip: true, skipSmaller: true },
     forceResume: false, // If the server does not return the "accept-ranges" header but it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)    
@@ -33,7 +37,9 @@ dl
             total: downloadInfo.totalSize
         }))
     .on('end', downloadInfo => console.log('Download Completed: ', downloadInfo))
-    .on('error', err => console.error('Something happend', err))
+    .on('skip', skipInfo => 
+        console.log('Download skipped. File already exists: ', skipInfo))
+    .on('error', err => console.error('Something happened', err))
     .on('retry', (attempt, opts) => {
         console.log(
             'Retry Attempt:', attempt + '/' + opts.maxRetries,

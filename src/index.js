@@ -7,6 +7,7 @@ import * as URL from 'url';
 
 export const DH_STATES = {
     IDLE: 'IDLE',
+    SKIPPED: 'SKIPPED',
     STARTED: 'STARTED',
     DOWNLOADING: 'DOWNLOADING',
     RETRY: 'RETRY',
@@ -40,7 +41,7 @@ export class DownloaderHelper extends EventEmitter {
             method: 'GET',
             headers: {},
             fileName: '',
-            override: false,
+            override: false, // { skip: false, skipSmaller: false }
             forceResume: false,
             removeOnStop: true,
             removeOnFail: true,
@@ -355,6 +356,22 @@ export class DownloaderHelper extends EventEmitter {
             const _fileName = this.__getFileNameFromHeaders(response.headers);
             this.__filePath = this.__getFilePath(_fileName);
             this.__fileName = this.__filePath.split(path.sep).pop();
+            if (fs.existsSync(this.__filePath)) {
+                const downloadedSize = this.__getFilesizeInBytes(this.__filePath);
+                if (typeof this.__opts.override === 'object' &&
+                    this.__opts.override.skip && (
+                    this.__opts.override.skipSmaller ||
+                    downloadedSize >= this.__total)) {
+                    this.emit('skip', {
+                        totalSize: this.__total,
+                        fileName: this.__fileName,
+                        filePath: this.__filePath,
+                        downloadedSize: downloadedSize
+                    });
+                    this.__setState(this.__states.SKIPPED);
+                    return resolve(true);
+                }
+            }
             this.__fileStream = fs.createWriteStream(this.__filePath, {});
         } else {
             this.__fileStream = fs.createWriteStream(this.__filePath, { 'flags': 'a' });
