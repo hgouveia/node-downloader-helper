@@ -1,13 +1,22 @@
 const { join } = require('path');
 const { DownloaderHelper } = require('../dist');
 const { expect } = require('chai');
+const { homedir } = require('os');
+const fs = require('fs');
+jest.mock('fs');
 
 const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 describe('DownloaderHelper', function () {
 
     describe('constructor', function () {
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
 
         it('should create a instance', function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+
             expect(function () {
                 const dl = new DownloaderHelper(downloadURL, __dirname);
             }).to.not.throw();
@@ -39,10 +48,31 @@ describe('DownloaderHelper', function () {
 
         it("should fail if destination folder doesn' exist", function () {
             expect(function () {
-                const home = require('os').homedir();
+                const home = homedir();
                 const nonExistingPath = home + '/dh_' + new Date().getTime();
                 const dl = new DownloaderHelper(downloadURL, nonExistingPath);
             }).to.throw('Destination Folder must exist');
+        });
+
+        it("should fail if destination folder is not a directory", function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => false });
+            
+            expect(function () {
+                const dl = new DownloaderHelper(downloadURL, __dirname);
+            }).to.throw('Destination Folder must be a directory');
+        });
+
+        it("should fail if destination folder is not writable", function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+            fs.accessSync.mockImplementation(() => {
+                throw new Error();
+            });
+
+            expect(function () {
+                const dl = new DownloaderHelper(downloadURL, __dirname);
+            }).to.throw('Destination Folder must be writable');
         });
 
     });
@@ -51,6 +81,8 @@ describe('DownloaderHelper', function () {
         let fileName, fileNameExt;
 
         beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
             fileName = 'myfilename.zip';
             fileNameExt = 'zip';
         });
