@@ -748,6 +748,17 @@ export class DownloaderHelper extends EventEmitter {
             throw new Error('Destination Folder must exist');
         }
 
+        const stats = fs.statSync(destFolder);
+        if (!stats.isDirectory()) {
+            throw new Error('Destination Folder must be a directory');
+        }
+
+        try {
+            fs.accessSync(destFolder, fs.constants.W_OK);
+        } catch (e) {
+            throw new Error('Destination Folder must be writable');
+        }
+
         return true;
     }
 
