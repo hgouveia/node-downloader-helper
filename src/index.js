@@ -368,7 +368,7 @@ export class DownloaderHelper extends EventEmitter {
                         filePath: this.__filePath,
                         downloadedSize: downloadedSize
                     });
-                    this.state = this.__states.SKIPPED;
+                    this.__setState(this.__states.SKIPPED);
                     return resolve(true);
                 }
             }
