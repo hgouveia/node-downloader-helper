@@ -156,6 +156,7 @@ event **end** `downloadInfo` object
     fileName:, 
     filePath:,
     totalSize:, // total file size got from the server
+    incomplete:, // true/false if the download endend but still incomplete
     onDiskSize, // total size of file on the disk
     downloadedSize:, // the total size downloaded
 }

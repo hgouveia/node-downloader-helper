@@ -1,6 +1,6 @@
 ## Contributing
 
 * If you find solution to an [issue/improvements](https://github.com/hgouveia/node-downloader-helper/issues) would be helpful to everyone, feel free to send us a pull request.
-* The ideal approach to create a fix would be to fork the repository, create a branch in your repository, and make a pull request out of it.
+* The ideal approach to create a fix would be to fork the repository, create a branch in your repository, and make a pull request out of it. Preferable into **Dev** branch
 * It is desirable if there is enough comments/documentation and Tests included in the pull request.
 * For general idea of contribution, please follow the guidelines mentioned [here](https://guides.github.com/activities/contributing-to-open-source/).

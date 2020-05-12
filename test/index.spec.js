@@ -57,7 +57,7 @@ describe('DownloaderHelper', function () {
         it("should fail if destination folder is not a directory", function () {
             fs.existsSync.mockReturnValue(true);
             fs.statSync.mockReturnValue({ isDirectory: () => false });
-            
+
             expect(function () {
                 const dl = new DownloaderHelper(downloadURL, __dirname);
             }).to.throw('Destination Folder must be a directory');

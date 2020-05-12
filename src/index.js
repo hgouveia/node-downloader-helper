@@ -145,7 +145,7 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     stop() {
-        const emit = () => {
+        const emitStop = () => {
             this.__resolvePending();
             this.__setState(this.__states.STOPPED);
             this.emit('stop');
@@ -154,7 +154,7 @@ export class DownloaderHelper extends EventEmitter {
             fs.access(this.__filePath, _accessErr => {
                 // if can't access, probably is not created yet
                 if (_accessErr) {
-                    emit();
+                    emitStop();
                     return resolve(true);
                 }
 
@@ -164,7 +164,7 @@ export class DownloaderHelper extends EventEmitter {
                         this.emit('error', _err);
                         return reject(_err);
                     }
-                    emit();
+                    emitStop();
                     resolve(true);
                 });
             });
@@ -178,7 +178,7 @@ export class DownloaderHelper extends EventEmitter {
             if (this.__opts.removeOnStop) {
                 return removeFile();
             }
-            emit();
+            emitStop();
             return Promise.resolve(true);
         });
     }
@@ -326,6 +326,7 @@ export class DownloaderHelper extends EventEmitter {
                 const err = new Error(`Response status was ${response.statusCode}`);
                 err.status = response.statusCode || 0;
                 err.body = response.body || '';
+                this.__setState(this.__states.FAILED);
                 this.emit('error', err);
                 return reject(err);
             }
@@ -360,8 +361,8 @@ export class DownloaderHelper extends EventEmitter {
                 const downloadedSize = this.__getFilesizeInBytes(this.__filePath);
                 if (typeof this.__opts.override === 'object' &&
                     this.__opts.override.skip && (
-                    this.__opts.override.skipSmaller ||
-                    downloadedSize >= this.__total)) {
+                        this.__opts.override.skipSmaller ||
+                        downloadedSize >= this.__total)) {
                     this.emit('skip', {
                         totalSize: this.__total,
                         fileName: this.__fileName,
@@ -411,8 +412,9 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __hasFinished() {
-        return this.state !== this.__states.PAUSED &&
-            this.state !== this.__states.STOPPED;
+        return (this.state !== this.__states.PAUSED &&
+            this.state !== this.__states.STOPPED &&
+            this.state !== this.__states.FAILED);
     }
 
     /**
@@ -436,6 +438,7 @@ export class DownloaderHelper extends EventEmitter {
                         fileName: this.__fileName,
                         filePath: this.__filePath,
                         totalSize: this.__total,
+                        incomplete: this.__downloaded !== this.__total,
                         onDiskSize: this.__getFilesizeInBytes(this.__filePath),
                         downloadedSize: this.__downloaded,
                     });
@@ -473,25 +476,27 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __onError(resolve, reject) {
-        return err => {
-            if (this.__fileStream) {
-                this.__fileStream.close(() => {
-                    if (this.__opts.removeOnFail) {
-                        fs.unlink(this.__filePath, () => reject(err));
-                    }
-                });
+        const removeFile = () => new Promise(_resolve => {
+            if (!this.__fileStream) {
+                return _resolve();
             }
+            this.__fileStream.close(() => {
+                if (this.__opts.removeOnFail) {
+                    return fs.unlink(this.__filePath, () => _resolve());
+                }
+                _resolve();
+            });
+        });
+        return err => {
             this.__pipes = [];
             this.__setState(this.__states.FAILED);
             this.emit('error', err);
-
             if (!this.__opts.retry) {
-                return reject(err);
+                return removeFile().then(() => reject(err));
             }
-
             return this.__retry()
                 .then(() => resolve(true))
-                .catch(_err => reject(_err ? _err : err));
+                .catch(_err => removeFile().then(() => reject(_err ? _err : err)));
         };
     }
 
