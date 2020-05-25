@@ -96,8 +96,9 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | unpipe   	| `(stream)`  if not stream is not specified, then all pipes are detached.      |
 | updateOptions   	| `(options)` updates the options, can be use on pause/resume events    |
 | getStats  | returns `stats` from the current download, these are the same `stats` sent via progress event  |
+| getTotalSize 	| gets the total file size from the server                                  |
 | getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
-| isResumable   	| return tru/false if the download can be resumable (available after the start phase) |
+| isResumable   	| return true/false if the download can be resumable (available after the start phase) |
 
 
 ## Events
@@ -107,13 +108,14 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | start        	| Emitted when the .start method is called                      	                    |
 | skip        	| Emitted when the download is skipped because the file already exists                  |
 | download     	| Emitted when the download starts `callback(downloadInfo)`        	                    |
-| progress     	| Emitted every 1 second while is downloading `callback(stats)` 	                    |
+| progress     	| Emitted every time gets data from the server `callback(stats)` 	                    |
+| progress.throttled| The same as `progress` but emits every 1 second while is downloading `callback(stats)` |
 | retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
 | end          	| Emitted when the downloading has finished `callback(downloadInfo)`                    |
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
 | pause        	| Emitted when the .pause method is called                      	                    |
-| resume       	| Emitted when the .resume method is called `callback(isResume)`                     	                    |
+| resume       	| Emitted when the .resume method is called `callback(isResume)`   	                    |
 | stop         	| Emitted when the .stop method is called                       	                    |
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
@@ -139,7 +141,7 @@ event **download** `downloadInfo` object
 }
 ```
 
-event **progress** `stats` object
+event **progress** or **progress.throttled** `stats` object
 ```javascript
 {
     name:, // file name

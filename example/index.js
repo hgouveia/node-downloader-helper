@@ -37,7 +37,7 @@ dl
             total: downloadInfo.totalSize
         }))
     .on('end', downloadInfo => console.log('Download Completed: ', downloadInfo))
-    .on('skip', skipInfo => 
+    .on('skip', skipInfo =>
         console.log('Download skipped. File already exists: ', skipInfo))
     .on('error', err => console.error('Something happened', err))
     .on('retry', (attempt, opts) => {
@@ -63,7 +63,7 @@ dl
         const downloaded = byteHelper(stats.downloaded);
         const total = byteHelper(stats.total);
 
-        // print every one second
+        // print every one second (`progress.throttled` can be used instead)
         const currentTime = new Date();
         const elaspsedTime = currentTime - startTime;
         if (elaspsedTime > 1000) {

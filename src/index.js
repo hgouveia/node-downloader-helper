@@ -224,7 +224,7 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
-     *
+     * Where the download will be saved
      *
      * @returns {String}
      * @memberof DownloaderHelper
@@ -234,7 +234,7 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
-     *
+     * Indicates if the download can be resumable (available after the start phase) 
      *
      * @returns {Boolean}
      * @memberof DownloaderHelper
@@ -245,7 +245,7 @@ export class DownloaderHelper extends EventEmitter {
 
 
     /**
-     *
+     * Updates the options, can be use on pause/resume events  
      *
      * @param {Object} [options={}]
      * @memberof DownloaderHelper
@@ -258,9 +258,9 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
+     * Current download progress stats
      *
-     *
-     * @returns
+     * @returns {Stats}
      * @memberof DownloaderHelper
      */
     getStats() {
@@ -271,6 +271,29 @@ export class DownloaderHelper extends EventEmitter {
             progress: this.__progress,
             speed: this.__statsEstimate.bytes
         };
+    }
+
+    /**
+     * Gets the total file size from the server
+     * 
+     * @returns {Promise<{name:string, total:number}>}
+     * @memberof DownloaderHelper
+     */
+    getTotalSize() {
+        const options = this.__getOptions('HEAD', this.url, this.__headers);
+        return new Promise((resolve, reject) => {
+            const request = this.__protocol.request(options, response => {
+                const { statusCode } = response;
+                if (statusCode !== 200) {
+                    reject(new Error(`Response status was ${response.statusCode}`));
+                }
+                resolve({
+                    name: this.__getFileNameFromHeaders(response.headers),
+                    total: parseInt(response.headers['content-length'] || 0)
+                });
+            });
+            request.end();
+        });
     }
 
     /**
@@ -667,6 +690,7 @@ export class DownloaderHelper extends EventEmitter {
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
+            this.emit('progress.throttled', this.getStats());
         }
 
         // emit the progress
