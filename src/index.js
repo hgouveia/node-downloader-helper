@@ -234,7 +234,7 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
-     * Indicates if the download can be resumable (available after the start phase) 
+     * Indicates if the download can be resumable (available after the start phase)
      *
      * @returns {Boolean}
      * @memberof DownloaderHelper
@@ -245,7 +245,7 @@ export class DownloaderHelper extends EventEmitter {
 
 
     /**
-     * Updates the options, can be use on pause/resume events  
+     * Updates the options, can be use on pause/resume events
      *
      * @param {Object} [options={}]
      * @memberof DownloaderHelper
@@ -275,7 +275,7 @@ export class DownloaderHelper extends EventEmitter {
 
     /**
      * Gets the total file size from the server
-     * 
+     *
      * @returns {Promise<{name:string, total:number}>}
      * @memberof DownloaderHelper
      */
@@ -331,8 +331,9 @@ export class DownloaderHelper extends EventEmitter {
             // Handle Redirects
             if (response.statusCode > 300 && response.statusCode < 400 &&
                 response.headers.hasOwnProperty('location') && response.headers.location) {
+                const redirectedURL = URL.resolve(this.url, response.headers.location);
                 this.__isRedirected = true;
-                this.__initProtocol(response.headers.location);
+                this.__initProtocol(redirectedURL);
                 // returns a new promise of the start process with the new url
                 // and resolve this current promise when the new operation finishes
                 return this.start()
@@ -646,7 +647,7 @@ export class DownloaderHelper extends EventEmitter {
             return this.__opts.fileName(fileName, currentPath);
         } else if (typeof this.__opts.fileName === 'object') {
 
-            const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string} 
+            const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string}
             const name = fileNameOpts.name;
             const ext = fileNameOpts.hasOwnProperty('ext')
                 ? fileNameOpts.ext : false;
