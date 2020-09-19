@@ -283,8 +283,22 @@ export class DownloaderHelper extends EventEmitter {
         const options = this.__getOptions('HEAD', this.url, this.__headers);
         return new Promise((resolve, reject) => {
             const request = this.__protocol.request(options, response => {
-                const { statusCode } = response;
-                if (statusCode !== 200) {
+                if (this.__isRequireRedirect(response)) {
+                    const redirectedURL = URL.resolve(this.url, response.headers.location);
+                    const options = this.__getOptions('HEAD', redirectedURL, this.__headers);
+                    const request = this.__protocol.request(options, response => {
+                        if (response.statusCode !== 200) {
+                            reject(new Error(`Response status was ${response.statusCode}`));
+                        }
+                        resolve({
+                            name: this.__getFileNameFromHeaders(response.headers),
+                            total: parseInt(response.headers['content-length'] || 0)
+                        });
+                    })
+                    request.end();
+                    return;
+                }
+                if (response.statusCode !== 200) {
                     reject(new Error(`Response status was ${response.statusCode}`));
                 }
                 resolve({
@@ -329,8 +343,7 @@ export class DownloaderHelper extends EventEmitter {
             }
 
             // Handle Redirects
-            if (response.statusCode > 300 && response.statusCode < 400 &&
-                response.headers.hasOwnProperty('location') && response.headers.location) {
+            if (this.__isRequireRedirect(response)) {
                 const redirectedURL = URL.resolve(this.url, response.headers.location);
                 this.__isRedirected = true;
                 this.__initProtocol(redirectedURL);
@@ -439,6 +452,21 @@ export class DownloaderHelper extends EventEmitter {
         return (this.state !== this.__states.PAUSED &&
             this.state !== this.__states.STOPPED &&
             this.state !== this.__states.FAILED);
+    }
+
+
+    /**
+     *
+     *
+     * @param {IncomingMessage} response
+     * @returns {Boolean}
+     * @memberof DownloaderHelper
+     */
+    __isRequireRedirect(response) {
+        return (response.statusCode > 300 &&
+            response.statusCode < 400 &&
+            response.headers.hasOwnProperty('location') &&
+            response.headers.location);
     }
 
     /**
