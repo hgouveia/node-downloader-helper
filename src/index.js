@@ -234,7 +234,7 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
-     * Indicates if the download can be resumable (available after the start phase) 
+     * Indicates if the download can be resumable (available after the start phase)
      *
      * @returns {Boolean}
      * @memberof DownloaderHelper
@@ -245,7 +245,7 @@ export class DownloaderHelper extends EventEmitter {
 
 
     /**
-     * Updates the options, can be use on pause/resume events  
+     * Updates the options, can be use on pause/resume events
      *
      * @param {Object} [options={}]
      * @memberof DownloaderHelper
@@ -275,7 +275,7 @@ export class DownloaderHelper extends EventEmitter {
 
     /**
      * Gets the total file size from the server
-     * 
+     *
      * @returns {Promise<{name:string, total:number}>}
      * @memberof DownloaderHelper
      */
@@ -283,8 +283,22 @@ export class DownloaderHelper extends EventEmitter {
         const options = this.__getOptions('HEAD', this.url, this.__headers);
         return new Promise((resolve, reject) => {
             const request = this.__protocol.request(options, response => {
-                const { statusCode } = response;
-                if (statusCode !== 200) {
+                if (this.__isRequireRedirect(response)) {
+                    const redirectedURL = URL.resolve(this.url, response.headers.location);
+                    const options = this.__getOptions('HEAD', redirectedURL, this.__headers);
+                    const request = this.__protocol.request(options, response => {
+                        if (response.statusCode !== 200) {
+                            reject(new Error(`Response status was ${response.statusCode}`));
+                        }
+                        resolve({
+                            name: this.__getFileNameFromHeaders(response.headers),
+                            total: parseInt(response.headers['content-length'] || 0)
+                        });
+                    })
+                    request.end();
+                    return;
+                }
+                if (response.statusCode !== 200) {
                     reject(new Error(`Response status was ${response.statusCode}`));
                 }
                 resolve({
@@ -329,10 +343,10 @@ export class DownloaderHelper extends EventEmitter {
             }
 
             // Handle Redirects
-            if (response.statusCode > 300 && response.statusCode < 400 &&
-                response.headers.hasOwnProperty('location') && response.headers.location) {
+            if (this.__isRequireRedirect(response)) {
+                const redirectedURL = URL.resolve(this.url, response.headers.location);
                 this.__isRedirected = true;
-                this.__initProtocol(response.headers.location);
+                this.__initProtocol(redirectedURL);
                 // returns a new promise of the start process with the new url
                 // and resolve this current promise when the new operation finishes
                 return this.start()
@@ -438,6 +452,21 @@ export class DownloaderHelper extends EventEmitter {
         return (this.state !== this.__states.PAUSED &&
             this.state !== this.__states.STOPPED &&
             this.state !== this.__states.FAILED);
+    }
+
+
+    /**
+     *
+     *
+     * @param {IncomingMessage} response
+     * @returns {Boolean}
+     * @memberof DownloaderHelper
+     */
+    __isRequireRedirect(response) {
+        return (response.statusCode > 300 &&
+            response.statusCode < 400 &&
+            response.headers.hasOwnProperty('location') &&
+            response.headers.location);
     }
 
     /**
@@ -646,7 +675,7 @@ export class DownloaderHelper extends EventEmitter {
             return this.__opts.fileName(fileName, currentPath);
         } else if (typeof this.__opts.fileName === 'object') {
 
-            const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string} 
+            const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string}
             const name = fileNameOpts.name;
             const ext = fileNameOpts.hasOwnProperty('ext')
                 ? fileNameOpts.ext : false;
