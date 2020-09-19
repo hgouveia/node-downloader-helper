@@ -11,4 +11,4 @@ test/
 appveyor.yml
 CHANGELOG
 CONTRIBUTING.md
-jest.config
+jest.config.js
