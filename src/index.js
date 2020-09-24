@@ -311,6 +311,40 @@ export class DownloaderHelper extends EventEmitter {
     }
 
     /**
+     * Get the state required to resume the download after restart. This state
+     *  can be passed back to `setResumeState()` to resume a download
+     * 
+     * @returns {Object} Returns the state required to resume
+     */
+    getResumeState() {
+        return {
+			__downloaded: this.__downloaded,
+			__progress: this.__progress,
+			__filePath: this.__filePath,
+			__fileName: this.__fileName,
+			__total: this.__total,
+			__statsEstimate: this.__statsEstimate
+		};
+    }
+
+    /**
+     * Set the state required to resume the download after restart. This state
+     *  should be pulled from `getResumeState()` and saved
+     * 
+     * @param {Object} state Pass the state saved from `getResumeState()`
+     */
+    setResumeState(state) {
+        this.__downloaded = state.__downloaded;
+        this.__progress = state.__progress;
+        this.__filePath = state.__filePath;
+        this.__fileName = state.__fileName;
+        this.__total = state.__total;
+        this.__statsEstimate = state.__statsEstimate
+
+        this.__isResumable = true;
+    }
+
+    /**
      * Resolve pending promises from Start method
      *
      * @memberof DownloaderHelper
