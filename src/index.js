@@ -620,6 +620,7 @@ export class DownloaderHelper extends EventEmitter {
             fileName = fileName.trim();
             fileName = fileName.substr(fileName.indexOf('filename=') + 9);
             fileName = fileName.replace(new RegExp('"', 'g'), '');
+            fileName = fileName.replace(/[/\\]/g, '');
         } else {
             fileName = path.basename(URL.parse(this.requestURL).pathname);
         }

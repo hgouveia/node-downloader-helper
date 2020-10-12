@@ -1,6 +1,6 @@
 {
   "name": "node-downloader-helper",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
   "scripts": {
