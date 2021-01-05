@@ -334,7 +334,7 @@ export class DownloaderHelper extends EventEmitter {
      * @param {Object} state Pass the state saved from `getResumeState()`
      */
     setResumeState(state) {
-        this.__downloaded = state.__downloaded;
+        this.__downloaded = this.__getFilesizeInBytes(state.__filePath);
         this.__progress = state.__progress;
         this.__filePath = state.__filePath;
         this.__fileName = state.__fileName;
