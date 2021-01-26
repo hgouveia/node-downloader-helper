@@ -5,7 +5,7 @@ const { DownloaderHelper } = require('../dist');
 const { byteHelper, color, COLOR_RED, COLOR_GREEN,
     COLOR_YELLOW, COLOR_CYAN, COLOR_MAGENTA,
     isValidPath, isValidUrl, inlineLog
-} = require('../example/helpers');
+} = require('./helpers');
 const pkg = require('../package.json');
 
 // Arguments
@@ -25,7 +25,6 @@ if (!isValidUrl(url)) {
 }
 
 let progressLog = '';
-let startTime = new Date();
 const dl = new DownloaderHelper(url, dest, {
     headers: {
         'user-agent': pkg.name + '@' + pkg.version
@@ -52,26 +51,18 @@ dl
             console.warn(color(COLOR_YELLOW, "\nThis URL doesn't support resume, it will start from the beginning"));
         }
     })
-    .on('progress', stats => {
+    .on('progress.throttled', stats => {
         const progress = stats.progress.toFixed(1);
         const speed = byteHelper(stats.speed);
         const downloaded = byteHelper(stats.downloaded);
         const total = byteHelper(stats.total);
 
-        // print every one second
-        const currentTime = new Date();
-        const elaspsedTime = currentTime - startTime;
-        if (elaspsedTime > 1000) {
-            const cName = color(COLOR_YELLOW, stats.name);
-            const cSpeed = color(COLOR_MAGENTA, speed + '/s');
-            const cProgress = color(COLOR_MAGENTA, progress + '%');
-            const cSize = color(COLOR_CYAN, `[${downloaded}/${total}]`);
-            startTime = currentTime;
-            progressLog = `${cName}: ${cSpeed} - ${cProgress} ${cSize}`;
-            inlineLog(progressLog);
-        }
+        const cName = color(COLOR_YELLOW, stats.name);
+        const cSpeed = color(COLOR_MAGENTA, speed + '/s');
+        const cProgress = color(COLOR_MAGENTA, progress + '%');
+        const cSize = color(COLOR_CYAN, `[${downloaded}/${total}]`);
+        progressLog = `${cName}: ${cSpeed} - ${cProgress} ${cSize}`;
+        inlineLog(progressLog);
     });
 
-dl.start().catch(err => {
-    console.error(color(COLOR_RED, 'Something happend'), err);
-});
+dl.start().catch(err => console.error(color(COLOR_RED, 'Something happend'), err));
