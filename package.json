@@ -3,6 +3,7 @@
   "version": "1.0.15",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
+  "types": "./types/index.d.ts",
   "scripts": {
     "start": "node ./example/index.js",
     "lint": "./node_modules/.bin/eslint src",
