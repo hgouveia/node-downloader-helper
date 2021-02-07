@@ -622,12 +622,18 @@ export class DownloaderHelper extends EventEmitter {
             fileName = fileName.replace(new RegExp('"', 'g'), '');
             fileName = fileName.replace(/[/\\]/g, '');
         } else {
-            fileName = path.basename(URL.parse(this.requestURL).pathname);
+            if (path.basename(URL.parse(this.requestURL).pathname).length > 0) {
+                fileName = path.basename(URL.parse(this.requestURL).pathname);
+            } else {
+                fileName = `${URL.parse(this.requestURL).hostname}.html`;
+            }
         }
 
-        return (this.__opts.fileName)
+        return (
+            (this.__opts.fileName)
             ? this.__getFileNameFromOpts(fileName)
-            : fileName;
+            : fileName
+        ).split('.').filter(Boolean).join('.'); // remove any potential trailing '.' (just to be sure)
     }
 
     /**
@@ -689,8 +695,8 @@ export class DownloaderHelper extends EventEmitter {
                 if (ext) {
                     return name;
                 } else {
-                    const _ext = fileName.split('.').pop();
-                    return `${name}.${_ext}`;
+                    const _ext = fileName.includes('.') ? fileName.split('.').pop() : ''; // make sure there is a '.' in the fileName string
+                    return _ext !== '' ? `${name}.${_ext}` : name; // if there is no extension, replace the whole file name
                 }
             }
         }
@@ -861,7 +867,7 @@ export class DownloaderHelper extends EventEmitter {
             let suffix = pathInfo ? parseInt(pathInfo[2].replace(/\(|\)/, '')) : 0;
             let ext = path.split('.').pop();
 
-            if (ext !== path) {
+            if (ext !== path && ext.length > 0) {
                 ext = '.' + ext;
                 base = base.replace(ext, '');
             } else {
