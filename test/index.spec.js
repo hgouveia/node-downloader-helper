@@ -167,5 +167,26 @@ describe('DownloaderHelper', function () {
             const result = dl.__getFileNameFromOpts(fileName);
             expect(result).to.be.equal(newFileName);
         });
+
+        it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
+            const newFileName = 'google.html';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({
+            });
+            expect(result).to.be.equal(newFileName);
+        });
+
+        it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
+            const newFileName = 'filename.jpg';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({
+                'content-disposition': 'Content-Disposition: attachment; filename="'+newFileName+'"',
+            });
+            expect(result).to.be.equal(newFileName);
+        });
     });
 });
