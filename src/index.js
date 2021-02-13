@@ -291,7 +291,7 @@ export class DownloaderHelper extends EventEmitter {
                             reject(new Error(`Response status was ${response.statusCode}`));
                         }
                         resolve({
-                            name: this.__getFileNameFromHeaders(response.headers),
+                            name: this.__getFileNameFromHeaders(response.headers, response),
                             total: parseInt(response.headers['content-length'] || 0)
                         });
                     })
@@ -302,7 +302,7 @@ export class DownloaderHelper extends EventEmitter {
                     reject(new Error(`Response status was ${response.statusCode}`));
                 }
                 resolve({
-                    name: this.__getFileNameFromHeaders(response.headers),
+                    name: this.__getFileNameFromHeaders(response.headers, response),
                     total: parseInt(response.headers['content-length'] || 0)
                 });
             });
@@ -609,7 +609,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {String}
      * @memberof DownloaderHelper
      */
-    __getFileNameFromHeaders(headers) {
+    __getFileNameFromHeaders(headers, response) {
         let fileName = '';
 
         // Get Filename
@@ -631,7 +631,7 @@ export class DownloaderHelper extends EventEmitter {
 
         return (
             (this.__opts.fileName)
-            ? this.__getFileNameFromOpts(fileName)
+            ? this.__getFileNameFromOpts(fileName, response)
             : fileName
         ).split('.').filter(Boolean).join('.'); // remove any potential trailing '.' (just to be sure)
     }
@@ -671,7 +671,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {String}
      * @memberof DownloaderHelper
      */
-    __getFileNameFromOpts(fileName) {
+    __getFileNameFromOpts(fileName, response) {
 
         if (!this.__opts.fileName) {
             return fileName;
@@ -679,7 +679,11 @@ export class DownloaderHelper extends EventEmitter {
             return this.__opts.fileName;
         } else if (typeof this.__opts.fileName === 'function') {
             const currentPath = path.join(this.__destFolder, fileName);
-            return this.__opts.fileName(fileName, currentPath);
+            if ((response && response.headers) || (this.__response && this.__response.headers)) {
+                return this.__opts.fileName(fileName, currentPath, (response ? response : this.__response).headers['content-type']);
+            } else {
+                return this.__opts.fileName(fileName, currentPath);
+            }
         } else if (typeof this.__opts.fileName === 'object') {
 
             const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string}

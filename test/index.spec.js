@@ -3,7 +3,30 @@ const { DownloaderHelper } = require('../dist');
 const { expect } = require('chai');
 const { homedir } = require('os');
 const fs = require('fs');
+const http = require('http');
+const https = require('https');
+jest.mock('http');
+jest.mock('https');
 jest.mock('fs');
+
+// http/https request object
+function getRequestFn(requestOptions) { 
+    return (opts, callback) => {
+        callback({
+            body: requestOptions.body || '',
+            on: jest.fn(),
+            pipe: jest.fn(),
+            statusCode: requestOptions.statusCode || 200,
+            headers: requestOptions.headers || {},
+            unpipe: jest.fn(),
+        });
+        return {
+            on: jest.fn(),
+            end: jest.fn(),
+            abort: jest.fn(),
+        };
+    };
+} 
 
 const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 describe('DownloaderHelper', function () {
@@ -128,6 +151,30 @@ describe('DownloaderHelper', function () {
                     done();
                 }
             });
+            dl.__getFileNameFromOpts(fileName);
+        });
+
+        it("callback should return fileName, filePath and contentType if a response is provided", function (done) {
+            const fullPath = join(__dirname, fileName);
+            const contentType = 'application/zip';
+
+            http.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': contentType,
+                }
+            }));
+            // https.request.mockImplementation(requestFn);
+            
+            const dl = new DownloaderHelper(downloadURL, __dirname, {
+                fileName: function (_fileName, _filePath, _contentType) {
+                    expect(_fileName).to.be.equal(fileName);
+                    expect(_filePath).to.be.equal(fullPath);
+                    expect(_contentType).to.be.equal(contentType);
+                    done();
+                }
+            });
+            dl.start()
             dl.__getFileNameFromOpts(fileName);
         });
 
