@@ -71,7 +71,7 @@ interface DownloadEvents {
   skip: (stats: BaseStats) => any;
   /** Emitted when the download starts */
   download: (stats: DownloadInfoStats) => any;
-  /** 	Emitted every time gets data from the server */
+  /**	Emitted every time gets data from the server */
   progress: (stats: Stats) => any;
   /** The same as progress but emits every 1 second while is downloading */
   "progress.throttled": (stats: Stats) => any;
@@ -92,7 +92,7 @@ interface DownloadEvents {
   /** Emitted when '(number)' is appended to the end of file, this requires override:false opt, callback(filePaths) */
   renamed: (stats: FileRenamedStats) => any;
   /** Emitted when the state changes */
-  stateChanged: (state: any) => any;
+  stateChanged: (state: DH_STATES) => any;
 }
 type FilenameCallback = (fileName: string, filePath: string) => string;
 interface FilenameDefinition {
