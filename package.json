@@ -37,6 +37,7 @@
     "ndh": "bin/ndh"
   },
   "devDependencies": {
+    "@types/node": "^14.14.31",
     "babel-cli": "^6.26.0",
     "babel-jest": "^23.6.0",
     "babel-preset-env": "^1.6.1",
