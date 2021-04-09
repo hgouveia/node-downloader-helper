@@ -64,6 +64,7 @@ these are the default values
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)
+    progressThrottle: 1000, // interval time of the 'progress.throttled' event will be emitted
     override: boolean|{skip, skipSmaller}, // Behavior when local file already exists
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs

@@ -45,6 +45,7 @@ export class DownloaderHelper extends EventEmitter {
             forceResume: false,
             removeOnStop: true,
             removeOnFail: true,
+            progressThrottle: 1000,
             httpRequestOptions: {},
             httpsRequestOptions: {}
         };
@@ -65,7 +66,8 @@ export class DownloaderHelper extends EventEmitter {
         this.__statsEstimate = {
             time: 0,
             bytes: 0,
-            prevBytes: 0
+            prevBytes: 0,
+            throttleTime: 0,
         };
         this.__fileName = '';
         this.__filePath = '';
@@ -265,6 +267,12 @@ export class DownloaderHelper extends EventEmitter {
     updateOptions(options) {
         this.__opts = Object.assign({}, this.__opts, options);
         this.__headers = this.__opts.headers;
+
+        // validate the progressThrottle, if invalid, use the default
+        if (typeof this.__opts.progressThrottle !== 'number' || this.__opts.progressThrottle < 0) {
+            this.__opts.progressThrottle = this.__defaultOpts.progressThrottle;
+        }
+
         this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
     }
@@ -439,6 +447,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__isRedirected = false;
         this.__setState(this.__states.DOWNLOADING);
         this.__statsEstimate.time = new Date();
+        this.__statsEstimate.throttleTime = new Date();
 
         // Add externals pipe
         readable.on('data', chunk => this.__calculateStats(chunk.length));
@@ -729,6 +738,7 @@ export class DownloaderHelper extends EventEmitter {
     __calculateStats(receivedBytes) {
         const currentTime = new Date();
         const elaspsedTime = currentTime - this.__statsEstimate.time;
+        const throttleElapseTime = currentTime - this.__statsEstimate.throttleTime;
 
         if (!receivedBytes) {
             return;
@@ -742,6 +752,10 @@ export class DownloaderHelper extends EventEmitter {
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
+        }
+
+        if (this.__downloaded === this.__total || throttleElapseTime > this.__opts.progressThrottle) {
+            this.__statsEstimate.throttleTime = currentTime;
             this.emit('progress.throttled', this.getStats());
         }
 
