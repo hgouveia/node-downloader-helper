@@ -1,9 +1,9 @@
-import { EventEmitter } from 'events';
 import * as fs from 'fs';
+import * as URL from 'url';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
-import * as URL from 'url';
+import { EventEmitter } from 'events';
 
 export const DH_STATES = {
     IDLE: 'IDLE',
@@ -115,11 +115,11 @@ export class DownloaderHelper extends EventEmitter {
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
         }
 
-        this.__resolvePending();
-        this.__setState(this.__states.PAUSED);
-        this.emit('pause');
-
-        return Promise.resolve(true);
+        return this.__closeFileStream().then(() => {
+            this.__setState(this.__states.PAUSED);
+            this.emit('pause');
+            return true;
+        });
     }
 
     /**
@@ -631,8 +631,8 @@ export class DownloaderHelper extends EventEmitter {
 
         return (
             (this.__opts.fileName)
-            ? this.__getFileNameFromOpts(fileName, response)
-            : fileName
+                ? this.__getFileNameFromOpts(fileName, response)
+                : fileName
         ).split('.').filter(Boolean).join('.'); // remove any potential trailing '.' (just to be sure)
     }
 

@@ -1,9 +1,23 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
-const { DownloaderHelper } = require('../dist');
-const { byteHelper, pauseResumeTimer } = require('../bin/helpers');
+const { byteHelper } = require('../bin/helpers');
+const { DownloaderHelper, DH_STATES } = require('../dist');
 const url = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 const pkg = require('../package.json');
 const zlib = require('zlib');
+
+const pauseResumeTimer = (_dl, wait) => {
+    setTimeout(() => {
+        if (_dl.state === DH_STATES.FINISHED ||
+            _dl.state === DH_STATES.FAILED) {
+            return;
+        }
+
+        _dl.pause()
+            .then(() => console.log(`Paused for ${wait / 1000} seconds`))
+            .then(() => setTimeout(() => _dl.resume(), wait));
+
+    }, wait);
+};
 
 // these are the default options
 const options = {

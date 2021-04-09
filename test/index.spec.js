@@ -1,16 +1,17 @@
-const { join } = require('path');
-const { DownloaderHelper } = require('../dist');
-const { expect } = require('chai');
-const { homedir } = require('os');
 const fs = require('fs');
 const http = require('http');
 const https = require('https');
+const { join } = require('path');
+const { homedir } = require('os');
+const { expect } = require('chai');
+const { DownloaderHelper } = require('../dist');
+
+jest.mock('fs');
 jest.mock('http');
 jest.mock('https');
-jest.mock('fs');
 
 // http/https request object
-function getRequestFn(requestOptions) { 
+function getRequestFn(requestOptions) {
     return (opts, callback) => {
         callback({
             body: requestOptions.body || '',
@@ -26,7 +27,7 @@ function getRequestFn(requestOptions) {
             abort: jest.fn(),
         };
     };
-} 
+}
 
 const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
 describe('DownloaderHelper', function () {
@@ -165,7 +166,7 @@ describe('DownloaderHelper', function () {
                 }
             }));
             // https.request.mockImplementation(requestFn);
-            
+
             const dl = new DownloaderHelper(downloadURL, __dirname, {
                 fileName: function (_fileName, _filePath, _contentType) {
                     expect(_fileName).to.be.equal(fileName);
@@ -231,7 +232,7 @@ describe('DownloaderHelper', function () {
                 fileName: { name: newFileName, ext: true }
             });
             const result = dl.__getFileNameFromHeaders({
-                'content-disposition': 'Content-Disposition: attachment; filename="'+newFileName+'"',
+                'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(newFileName);
         });

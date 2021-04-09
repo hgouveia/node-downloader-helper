@@ -1,7 +1,6 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
 const { URL } = require('url');
 const { existsSync } = require('fs');
-const { DH_STATES } = require('../dist');
 
 // Console colors
 module.exports.COLOR_NC = '\033[0m'; // No Color \e
@@ -22,21 +21,6 @@ module.exports.byteHelper = function (value) {
     return (value / Math.pow(1024, Math.floor(number))).toFixed(1) + ' ' +
         units[number];
 };
-
-module.exports.pauseResumeTimer = function (_dl, wait) {
-    setTimeout(() => {
-        if (_dl.state === DH_STATES.FINISHED ||
-            _dl.state === DH_STATES.FAILED) {
-            return;
-        }
-
-        _dl.pause()
-            .then(() => console.log(`Paused for ${wait / 1000} seconds`))
-            .then(() => setTimeout(() => _dl.resume(), wait));
-
-    }, wait);
-};
-
 
 module.exports.color = function (color, text) {
     return `${color}${text}${module.exports.COLOR_NC}`;
