@@ -1,6 +1,5 @@
 const fs = require('fs');
 const http = require('http');
-const https = require('https');
 const { join } = require('path');
 const { homedir } = require('os');
 const { expect } = require('chai');
@@ -156,27 +155,28 @@ describe('DownloaderHelper', function () {
         });
 
         it("callback should return fileName, filePath and contentType if a response is provided", function (done) {
-            const fullPath = join(__dirname, fileName);
+            const fileNameFromURL = downloadURL.split('/').pop();
+            const fullPath = join(__dirname, fileNameFromURL);
             const contentType = 'application/zip';
 
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
             http.request.mockImplementation(getRequestFn({
                 statusCode: 200,
                 headers: {
                     'content-type': contentType,
                 }
             }));
-            // https.request.mockImplementation(requestFn);
 
             const dl = new DownloaderHelper(downloadURL, __dirname, {
                 fileName: function (_fileName, _filePath, _contentType) {
-                    expect(_fileName).to.be.equal(fileName);
+                    expect(_fileName).to.be.equal(fileNameFromURL);
                     expect(_filePath).to.be.equal(fullPath);
                     expect(_contentType).to.be.equal(contentType);
                     done();
+                    return fileNameFromURL;
                 }
             });
-            dl.start()
-            dl.__getFileNameFromOpts(fileName);
+            dl.start();
         });
 
         it("should rename only the file name and not the extension when a object is passed in the 'fileName' opts with only 'name' attr", function () {
@@ -221,8 +221,7 @@ describe('DownloaderHelper', function () {
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
                 fileName: { name: newFileName, ext: true }
             });
-            const result = dl.__getFileNameFromHeaders({
-            });
+            const result = dl.__getFileNameFromHeaders({});
             expect(result).to.be.equal(newFileName);
         });
 

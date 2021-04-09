@@ -59,7 +59,7 @@ these are the default values
 {
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
-    fileName: string|cb(fileName, filePath)|{name, ext}, // Custom filename when saved
+    fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
     retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
@@ -72,7 +72,7 @@ these are the default values
 
 for `fileName` you can provide 3 types of parameter
  - **string**: will use the full string as the filename including extension
- - **callback(fileName, filePath)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;` 
+ - **callback(fileName, filePath, contentType)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;`, **contentType** will be provided if available
  - **object**: this object must contain a `name` attribute and an optional `ext` attribute, the `ext` attribute can be an string without dot(`.`) or a boolean where `true` use the `name` as full file name (same as just giving an string to the `fileName` parameter) or false *(default)* will only replace the name and keep the original extension, for example if the original name is `myfile.zip` and the option is `{name: 'somename'}` the output will be `somename.zip`
 
 for `override` you can provide 2 types of parameter
