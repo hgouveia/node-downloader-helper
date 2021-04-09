@@ -84,6 +84,14 @@ export class DownloaderHelper extends EventEmitter {
                 this.state !== this.__states.RESUMED) {
                 this.emit('start');
                 this.__setState(this.__states.STARTED);
+            } else if (this.state === this.__states.RESUMED && this.__promise) {
+                // recovering previous promise resolve/reject
+                const pResolve = this.__promise.resolve;
+                const pReject = this.__promise.reject;
+                const cResolve = resolve;
+                const cReject = reject;
+                resolve = (...args) => (pResolve(...args), cResolve(...args));
+                reject = (...args) => (pReject(...args), cReject(...args));
             }
 
             // Start the Download
@@ -113,6 +121,10 @@ export class DownloaderHelper extends EventEmitter {
         if (this.__response) {
             this.__response.unpipe();
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
+        }
+
+        if (this.__fileStream) {
+            this.__fileStream.removeAllListeners();
         }
 
         return this.__closeFileStream().then(() => {
