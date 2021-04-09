@@ -291,7 +291,7 @@ export class DownloaderHelper extends EventEmitter {
                             reject(new Error(`Response status was ${response.statusCode}`));
                         }
                         resolve({
-                            name: this.__getFileNameFromHeaders(response.headers),
+                            name: this.__getFileNameFromHeaders(response.headers, response),
                             total: parseInt(response.headers['content-length'] || 0)
                         });
                     })
@@ -302,7 +302,7 @@ export class DownloaderHelper extends EventEmitter {
                     reject(new Error(`Response status was ${response.statusCode}`));
                 }
                 resolve({
-                    name: this.__getFileNameFromHeaders(response.headers),
+                    name: this.__getFileNameFromHeaders(response.headers, response),
                     total: parseInt(response.headers['content-length'] || 0)
                 });
             });
@@ -609,7 +609,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {String}
      * @memberof DownloaderHelper
      */
-    __getFileNameFromHeaders(headers) {
+    __getFileNameFromHeaders(headers, response) {
         let fileName = '';
 
         // Get Filename
@@ -622,12 +622,18 @@ export class DownloaderHelper extends EventEmitter {
             fileName = fileName.replace(new RegExp('"', 'g'), '');
             fileName = fileName.replace(/[/\\]/g, '');
         } else {
-            fileName = path.basename(URL.parse(this.requestURL).pathname);
+            if (path.basename(URL.parse(this.requestURL).pathname).length > 0) {
+                fileName = path.basename(URL.parse(this.requestURL).pathname);
+            } else {
+                fileName = `${URL.parse(this.requestURL).hostname}.html`;
+            }
         }
 
-        return (this.__opts.fileName)
-            ? this.__getFileNameFromOpts(fileName)
-            : fileName;
+        return (
+            (this.__opts.fileName)
+            ? this.__getFileNameFromOpts(fileName, response)
+            : fileName
+        ).split('.').filter(Boolean).join('.'); // remove any potential trailing '.' (just to be sure)
     }
 
     /**
@@ -665,7 +671,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {String}
      * @memberof DownloaderHelper
      */
-    __getFileNameFromOpts(fileName) {
+    __getFileNameFromOpts(fileName, response) {
 
         if (!this.__opts.fileName) {
             return fileName;
@@ -673,7 +679,11 @@ export class DownloaderHelper extends EventEmitter {
             return this.__opts.fileName;
         } else if (typeof this.__opts.fileName === 'function') {
             const currentPath = path.join(this.__destFolder, fileName);
-            return this.__opts.fileName(fileName, currentPath);
+            if ((response && response.headers) || (this.__response && this.__response.headers)) {
+                return this.__opts.fileName(fileName, currentPath, (response ? response : this.__response).headers['content-type']);
+            } else {
+                return this.__opts.fileName(fileName, currentPath);
+            }
         } else if (typeof this.__opts.fileName === 'object') {
 
             const fileNameOpts = this.__opts.fileName;  // { name:string, ext:true|false|string}
@@ -689,8 +699,8 @@ export class DownloaderHelper extends EventEmitter {
                 if (ext) {
                     return name;
                 } else {
-                    const _ext = fileName.split('.').pop();
-                    return `${name}.${_ext}`;
+                    const _ext = fileName.includes('.') ? fileName.split('.').pop() : ''; // make sure there is a '.' in the fileName string
+                    return _ext !== '' ? `${name}.${_ext}` : name; // if there is no extension, replace the whole file name
                 }
             }
         }
@@ -861,7 +871,7 @@ export class DownloaderHelper extends EventEmitter {
             let suffix = pathInfo ? parseInt(pathInfo[2].replace(/\(|\)/, '')) : 0;
             let ext = path.split('.').pop();
 
-            if (ext !== path) {
+            if (ext !== path && ext.length > 0) {
                 ext = '.' + ext;
                 base = base.replace(ext, '');
             } else {
