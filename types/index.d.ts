@@ -97,7 +97,11 @@ interface DownloadEvents {
 type FilenameCallback = (fileName: string, filePath: string) => string;
 interface FilenameDefinition {
   name: string;
-  ext: string;
+  /** The extension of the file. It may be a boolean: `true` will use the `name` property as the full file name (including the extension),
+  `false` will keep the extension of the downloaded file.
+  
+  (default:false) */
+  ext?: string | boolean;
 }
 interface RetryOptions {
   maxRetries: number;
@@ -122,7 +126,7 @@ interface DownloaderHelperOptions {
   removeOnStop?: boolean;
   /** remove the file when fail (default:true) */
   removeOnFail?: boolean;
-  /** Behavior when local file already exists */
+  /** Behavior when local file already exists (default:false)*/
   override?: boolean | OverrideOptions;
   /** Override the http request options */
   httpRequestOptions?: object;
