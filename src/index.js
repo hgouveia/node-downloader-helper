@@ -18,7 +18,7 @@ export const DH_STATES = {
     FAILED: 'FAILED'
 };
 
-export default class DownloaderHelper extends EventEmitter {
+export class DownloaderHelper extends EventEmitter {
     
     /**
      * Creates an instance of DownloaderHelper.
