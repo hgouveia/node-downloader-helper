@@ -276,12 +276,12 @@ export class DownloaderHelper extends EventEmitter {
         this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
         if (this.__opts.forceResume) {
-            const filename = this.__destFolder + "/" + this.__opts.fileName
+            const filename = this.__destFolder + '/' + this.__opts.fileName
             if (!fs.existsSync(filename)) {
                 return
             }
             const size = this.__getFilesizeInBytes(filename);
-            if (!!size) {
+            if (size) {
                 this.__downloaded = size;
                 this.__isResumable = true;
             }
@@ -372,8 +372,8 @@ export class DownloaderHelper extends EventEmitter {
                 this.__total = parseInt(response.headers['content-length']);
                 this.__resetStats();
             } else {
-                if (!!response.headers["content-range"]) {
-                    this.__total = parseInt(response.headers["content-range"].split("/").pop());
+                if (response.headers['content-range']) {
+                    this.__total = parseInt(response.headers['content-range'].split('/').pop());
                 }
             }
             
