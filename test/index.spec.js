@@ -235,5 +235,17 @@ describe('DownloaderHelper', function () {
             });
             expect(result).to.be.equal(newFileName);
         });
+
+        it("should keep leading dots but remove trailing dots", function () {
+            const newFileName = '.gitignore.';
+            const expectedFileName = '.gitignore';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({
+                'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
+            });
+            expect(result).to.be.equal(expectedFileName);
+        });
     });
 });

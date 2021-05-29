@@ -654,7 +654,7 @@ export class DownloaderHelper extends EventEmitter {
             (this.__opts.fileName)
                 ? this.__getFileNameFromOpts(fileName, response)
                 : fileName
-        ).split('.').filter(Boolean).join('.'); // remove any potential trailing '.' (just to be sure)
+        ).replace(/\.*$/, ''); // remove any potential trailing '.' (just to be sure)
     }
 
     /**
