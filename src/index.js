@@ -553,14 +553,22 @@ export class DownloaderHelper extends EventEmitter {
     __onError(resolve, reject) {
         return err => {
             this.__pipes = [];
-            this.__setState(this.__states.FAILED);
-            this.emit('error', err);
             if (!this.__opts.retry) {
-                return this.__removeFile().then(() => reject(err));
+                return this.__removeFile().then(() => {
+                    this.__setState(this.__states.FAILED);
+                    this.emit('error', err);
+                    reject(err);
+                });
             }
-            return this.__retry()
+            return this.__retry(err)
                 .then(() => resolve(true))
-                .catch(_err => this.__removeFile().then(() => reject(_err ? _err : err)));
+                .catch(_err => {
+                    this.__removeFile().then(() => {
+                        this.__setState(this.__states.FAILED);
+                        this.emit('error', _err ? _err : err);
+                        reject(_err ? _err : err);
+                    });
+                });
         };
     }
 
@@ -570,7 +578,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {Promise<boolean>}
      * @memberof DownloaderHelper
      */
-    __retry() {
+    __retry(err = null) {
         if (!this.__opts.retry) {
             return Promise.reject();
         }
@@ -578,20 +586,17 @@ export class DownloaderHelper extends EventEmitter {
         if (typeof this.__opts.retry !== 'object' ||
             !this.__opts.retry.hasOwnProperty('maxRetries') ||
             !this.__opts.retry.hasOwnProperty('delay')) {
-            const _err = new Error('wrong retry options');
-            this.__setState(this.__states.FAILED);
-            this.emit('error', _err);
-            return Promise.reject(_err);
+            return Promise.reject(new Error('wrong retry options'));
         }
 
         // reached the maximum retries
         if (this.__retryCount >= this.__opts.retry.maxRetries) {
-            return Promise.reject();
+            return Promise.reject(err ? err : new Error('reached the maximum retries'));
         }
 
         this.__retryCount++;
         this.__setState(this.__states.RETRY);
-        this.emit('retry', this.__retryCount, this.__opts.retry);
+        this.emit('retry', this.__retryCount, this.__opts.retry, err);
 
         return new Promise((resolve) =>
             setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.start()), this.__opts.retry.delay)
@@ -619,7 +624,7 @@ export class DownloaderHelper extends EventEmitter {
                 });
             }
 
-            return this.__retry()
+            return this.__retry(new Error('timeout'))
                 .then(() => resolve(true))
                 .catch(_err => {
                     this.__removeFile().then(() => {
@@ -836,8 +841,8 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __getFilesizeInBytes(filePath) {
-        const stats = fs.statSync(filePath);
-        const fileSizeInBytes = stats.size;
+        const stats = fs.statSync(filePath, false);
+        const fileSizeInBytes = stats.size || 0;
         return fileSizeInBytes;
     }
 

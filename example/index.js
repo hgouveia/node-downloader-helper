@@ -54,14 +54,15 @@ dl
     .on('skip', skipInfo =>
         console.log('Download skipped. File already exists: ', skipInfo))
     .on('error', err => console.error('Something happened', err))
-    .on('retry', (attempt, opts) => {
-        console.log(
-            'Retry Attempt:', attempt + '/' + opts.maxRetries,
-            'Starts on:', opts.delay / 1000, 'secs'
-        );
+    .on('retry', (attempt, opts, err) => {
+        console.log({
+            RetryAttempt: `${attempt}/${opts.maxRetries}`,
+            StartsOn: `${opts.delay / 1000} secs`,
+            Reason: err ? err.message : 'unknown'
+        });
     })
     .on('resume', isResumed => {
-        // is resume is not supported, 
+        // is resume is not supported,  
         // a new pipe instance needs to be attached
         if (!isResumed) {
             dl.unpipe();

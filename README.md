@@ -111,7 +111,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | download     	| Emitted when the download starts `callback(downloadInfo)`        	                    |
 | progress     	| Emitted every time gets data from the server `callback(stats)` 	                    |
 | progress.throttled| The same as `progress` but emits every 1 second while is downloading `callback(stats)` |
-| retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
+| retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts, err)`   |
 | end          	| Emitted when the downloading has finished `callback(downloadInfo)`                    |
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
