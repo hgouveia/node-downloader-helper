@@ -103,7 +103,7 @@ export class DownloaderHelper extends EventEmitter {
 
             // Error Handling
             this.__request.on('error', this.__onError(resolve, reject));
-            this.__request.on('timeout', () => this.emit('timeout'));
+            this.__request.on('timeout', this.__onTimeout(resolve, reject));
 
             this.__request.end();
         });
@@ -443,6 +443,7 @@ export class DownloaderHelper extends EventEmitter {
             isResumed: this.__isResumed,
             downloadedSize: this.__downloaded
         });
+        this.__retryCount = 0;
         this.__isResumed = false;
         this.__isRedirected = false;
         this.__setState(this.__states.DOWNLOADING);
@@ -472,6 +473,7 @@ export class DownloaderHelper extends EventEmitter {
     __hasFinished() {
         return (this.state !== this.__states.PAUSED &&
             this.state !== this.__states.STOPPED &&
+            this.state !== this.__states.RETRY &&
             this.state !== this.__states.FAILED);
     }
 
@@ -543,33 +545,22 @@ export class DownloaderHelper extends EventEmitter {
 
     /**
      *
-     *
+     * @param {Promise.resolve} resolve
      * @param {Promise.reject} reject
-     * @returns {Promise<boolean>}
+     * @returns {Function}
      * @memberof DownloaderHelper
      */
     __onError(resolve, reject) {
-        const removeFile = () => new Promise(_resolve => {
-            if (!this.__fileStream) {
-                return _resolve();
-            }
-            this.__fileStream.close(() => {
-                if (this.__opts.removeOnFail) {
-                    return fs.unlink(this.__filePath, () => _resolve());
-                }
-                _resolve();
-            });
-        });
         return err => {
             this.__pipes = [];
             this.__setState(this.__states.FAILED);
             this.emit('error', err);
             if (!this.__opts.retry) {
-                return removeFile().then(() => reject(err));
+                return this.__removeFile().then(() => reject(err));
             }
             return this.__retry()
                 .then(() => resolve(true))
-                .catch(_err => removeFile().then(() => reject(_err ? _err : err)));
+                .catch(_err => this.__removeFile().then(() => reject(_err ? _err : err)));
         };
     }
 
@@ -605,6 +596,43 @@ export class DownloaderHelper extends EventEmitter {
         return new Promise((resolve) =>
             setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.start()), this.__opts.retry.delay)
         );
+    }
+
+    /**
+     *
+     * @param {Promise.resolve} resolve
+     * @param {Promise.reject} reject
+     * @returns {Function}
+     * @memberof DownloaderHelper
+     */
+    __onTimeout(resolve, reject) {
+        return () => {
+            if (this.__request) {
+                this.__request.abort();
+            }
+
+            if (!this.__opts.retry) {
+                return this.__removeFile().then(() => {
+                    this.__setState(this.__states.FAILED);
+                    this.emit('timeout');
+                    reject(new Error('timeout'));
+                });
+            }
+
+            return this.__retry()
+                .then(() => resolve(true))
+                .catch(_err => {
+                    this.__removeFile().then(() => {
+                        this.__setState(this.__states.FAILED);
+                        if (_err) {
+                            reject(_err);
+                        } else {
+                            this.emit('timeout');
+                            reject(new Error('timeout'));
+                        }
+                    });
+                });
+        };
     }
 
     /**
@@ -649,7 +677,7 @@ export class DownloaderHelper extends EventEmitter {
                 fileName = `${URL.parse(this.requestURL).hostname}.html`;
             }
         }
-        
+
         return (
             (this.__opts.fileName)
                 ? this.__getFileNameFromOpts(fileName, response)
@@ -909,5 +937,25 @@ export class DownloaderHelper extends EventEmitter {
         } catch (err) {
             return path;
         }
+    }
+
+    /**
+     *
+     *
+     * @returns {Promise<void>}
+     * @memberof DownloaderHelper
+     */
+    __removeFile() {
+        return new Promise(resolve => {
+            if (!this.__fileStream) {
+                return resolve();
+            }
+            this.__fileStream.close(() => {
+                if (this.__opts.removeOnFail) {
+                    return fs.unlink(this.__filePath, () => resolve());
+                }
+                resolve();
+            });
+        });
     }
 }

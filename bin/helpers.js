@@ -3,13 +3,13 @@ const { URL } = require('url');
 const { existsSync } = require('fs');
 
 // Console colors
-module.exports.COLOR_NC = '\033[0m'; // No Color \e
-module.exports.COLOR_RED = '\033[0;31m';
-module.exports.COLOR_GREEN = '\033[0;32m';
-module.exports.COLOR_YELLOW = '\033[0;33m';
-module.exports.COLOR_BLUE = '\033[0;34m';
-module.exports.COLOR_MAGENTA = '\033[0;35m';
-module.exports.COLOR_CYAN = '\033[0;36m';
+module.exports.COLOR_NC = '\x1b[0m'; // No Color \e
+module.exports.COLOR_RED = '\x1b[0;31m';
+module.exports.COLOR_GREEN = '\x1b[0;32m';
+module.exports.COLOR_YELLOW = '\x1b[0;33m';
+module.exports.COLOR_BLUE = '\x1b[0;34m';
+module.exports.COLOR_MAGENTA = '\x1b[0;35m';
+module.exports.COLOR_CYAN = '\x1b[0;36m';
 
 // https://gist.github.com/thomseddon/3511330
 module.exports.byteHelper = function (value) {

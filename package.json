@@ -36,6 +36,9 @@
   "bin": {
     "ndh": "bin/ndh"
   },
+  "engines": {
+    "node": ">=6.9"
+  },
   "devDependencies": {
     "@types/node": "^14.14.31",
     "babel-cli": "^6.26.0",
