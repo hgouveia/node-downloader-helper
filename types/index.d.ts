@@ -35,7 +35,7 @@ interface BaseStats {
 
 interface DownloadInfoStats extends BaseStats {
   /** if the download is a resume */
-  isResumed: boolean; 
+  isResumed: boolean;
 }
 
 interface DownloadEndedStats extends BaseStats {
@@ -76,7 +76,7 @@ interface DownloadEvents {
   /** The same as progress but emits every 1 second while is downloading */
   "progress.throttled": (stats: Stats) => any;
   /** Emitted when the download fails and retry is enabled */
-  retry: (attempt: any, retryOptions: RetryOptions) => any;
+  retry: (attempt: any, retryOptions: RetryOptions, error: Error | null) => any;
   /** Emitted when the downloading has finished */
   end: (stats: DownloadEndedStats) => any;
   /** Emitted when there is any error */
@@ -234,7 +234,7 @@ export class DownloaderHelper extends EventEmitter {
    * @memberof DownloaderHelper
    */
   getTotalSize(): Promise<{ name: string; total: number }>;
-  
+
   /**
    * Subscribes to events
    * 
