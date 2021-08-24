@@ -318,6 +318,7 @@ export class DownloaderHelper extends EventEmitter {
         // Error Handling
         this.__request.on('error', this.__onError(this.__promise.resolve, this.__promise.reject));
         this.__request.on('timeout', this.__onTimeout(this.__promise.resolve, this.__promise.reject));
+        this.__request.on('uncaughtException', this.__onError(this.__promise.resolve, this.__promise.reject, true));
 
         this.__request.end();
     }
@@ -531,14 +532,20 @@ export class DownloaderHelper extends EventEmitter {
      *
      * @param {Promise.resolve} resolve
      * @param {Promise.reject} reject
+     * @param {boolean} abortReq
      * @returns {Function}
      * @memberof DownloaderHelper
      */
-    __onError(resolve, reject) {
+    __onError(resolve, reject, abortReq = false) {
         return err => {
             this.__pipes = [];
 
-            if (this.state === this.__states.STOPPED) {
+            if (abortReq) {
+                this.__requestAbort();
+            }
+
+            if (this.state === this.__states.STOPPED ||
+                this.state === this.__states.FAILED) {
                 return;
             }
 
