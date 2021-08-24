@@ -955,8 +955,17 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __requestAbort() {
+        if (this.__response) {
+            this.__response.destroy();
+        }
+
         if (this.__request) {
-            this.__request.abort();
+            // from node => v13.14.X
+            if (this.__request.destroy) {
+                this.__request.destroy();
+            } else {
+                this.__request.abort();
+            }
         }
     }
 }
