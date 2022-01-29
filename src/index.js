@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as URL from 'url';
+import * as legacyUrl from 'url';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
@@ -278,7 +278,7 @@ export class DownloaderHelper extends EventEmitter {
         return new Promise((resolve, reject) => {
             const request = this.__protocol.request(options, response => {
                 if (this.__isRequireRedirect(response)) {
-                    const redirectedURL = URL.resolve(this.url, response.headers.location);
+                    const redirectedURL = legacyUrl.resolve(this.url, response.headers.location);
                     const options = this.__getOptions('HEAD', redirectedURL, this.__headers);
                     const request = this.__protocol.request(options, response => {
                         if (response.statusCode !== 200) {
@@ -357,7 +357,7 @@ export class DownloaderHelper extends EventEmitter {
 
             // Handle Redirects
             if (this.__isRequireRedirect(response)) {
-                const redirectedURL = URL.resolve(this.url, response.headers.location);
+                const redirectedURL = legacyUrl.resolve(this.url, response.headers.location);
                 this.__isRedirected = true;
                 this.__initProtocol(redirectedURL);
                 return this.__start();
@@ -658,20 +658,37 @@ export class DownloaderHelper extends EventEmitter {
     __getFileNameFromHeaders(headers, response) {
         let fileName = '';
 
+        const fileNameAndEncodingRegExp = /.*filename\*=.*?''([^"].+?[^"])(?:(?:;)|$)/i // match everything after the specified encoding behind a case-insensitive `filename*=`
+        const fileNameWithQuotesRegExp = /.*filename="(.*?)";?/i // match everything inside the quotes behind a case-insensitive `filename=`
+        const fileNameWithoutQuotesRegExp = /.*filename=([^"].+?[^"])(?:(?:;)|$)/i // match everything immediately after `filename=` that isn't surrounded by quotes and is followed by either a `;` or the end of the string
+        
+        const ContentDispositionHeaderExists = headers.hasOwnProperty('content-disposition')
+        const fileNameAndEncodingMatch = !ContentDispositionHeaderExists ? null : headers['content-disposition'].match(fileNameAndEncodingRegExp)
+        const fileNameWithQuotesMatch = (!ContentDispositionHeaderExists || fileNameAndEncodingMatch) ? null : headers['content-disposition'].match(fileNameWithQuotesRegExp)
+        const fileNameWithoutQuotesMatch = (!ContentDispositionHeaderExists || fileNameAndEncodingMatch || fileNameWithQuotesMatch) ? null : headers['content-disposition'].match(fileNameWithoutQuotesRegExp)
+
         // Get Filename
-        if (headers.hasOwnProperty('content-disposition') &&
-            headers['content-disposition'].indexOf('filename=') > -1) {
+        if (ContentDispositionHeaderExists && (fileNameAndEncodingMatch || fileNameWithQuotesMatch || fileNameWithoutQuotesMatch)) {
 
             fileName = headers['content-disposition'];
             fileName = fileName.trim();
-            fileName = fileName.substr(fileName.indexOf('filename=') + 9);
-            fileName = fileName.replace(new RegExp('"', 'g'), '');
+
+            if (fileNameAndEncodingMatch) {
+                fileName = fileNameAndEncodingMatch[1];
+            } else if (fileNameWithQuotesMatch) {
+                fileName = fileNameWithQuotesMatch[1];
+            } else if (fileNameWithoutQuotesMatch) {
+                fileName = fileNameWithoutQuotesMatch[1];
+            }
+            
             fileName = fileName.replace(/[/\\]/g, '');
+
         } else {
-            if (path.basename(URL.parse(this.requestURL).pathname).length > 0) {
-                fileName = path.basename(URL.parse(this.requestURL).pathname);
+
+            if (path.basename(new URL(this.requestURL).pathname).length > 0) {
+                fileName = path.basename(new URL(this.requestURL).pathname);
             } else {
-                fileName = `${URL.parse(this.requestURL).hostname}.html`;
+                fileName = `${new URL(this.requestURL).hostname}.html`;
             }
         }
 
@@ -809,7 +826,7 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __getOptions(method, url, headers = {}) {
-        const urlParse = URL.parse(url);
+        const urlParse = legacyUrl.parse(url);
         const options = {
             protocol: urlParse.protocol,
             host: urlParse.hostname,
