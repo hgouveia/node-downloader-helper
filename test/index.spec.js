@@ -226,6 +226,18 @@ describe('DownloaderHelper', function () {
             expect(result).to.be.equal(newFileName);
         });
 
+    });
+
+    describe('__getFileNameFromHeaders', function () {
+        let fileName, fileNameExt;
+
+        beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+            fileName = 'myfilename.zip';
+            fileNameExt = 'zip';
+        });
+
         it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
             const newFileName = 'google.html';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -233,9 +245,9 @@ describe('DownloaderHelper', function () {
             });
             const result = dl.__getFileNameFromHeaders({});
             expect(result).to.be.equal(newFileName);
-        });
-
-        it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
+          });
+          
+          it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
             const newFileName = 'filename.jpg';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
                 fileName: { name: newFileName, ext: true }
@@ -244,9 +256,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(newFileName);
-        });
-
-        it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
+          });
+          
+          it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = '.gitignore';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -256,9 +268,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-        });
-
-        it("should not modify the filename when providing a callback", function () {
+          });
+          
+          it("should not modify the filename when providing a callback", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = newFileName
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -268,9 +280,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-        });
-
-        it("should parse all 'content-disposition' headers", function () {
+          });
+          
+          it("should parse all 'content-disposition' headers", function () {
             const dl = new DownloaderHelper('https://google.com/', __dirname);
             
             const tests = [
@@ -300,7 +312,8 @@ describe('DownloaderHelper', function () {
                 expect(dl.__getFileNameFromHeaders({'content-disposition': x.header}, null)).to.be.equal(x.fileName)
             })
             
-        });
-        
-    });
+          });
+
+    })
+    
 });
