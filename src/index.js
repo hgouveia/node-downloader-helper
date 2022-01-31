@@ -685,10 +685,10 @@ export class DownloaderHelper extends EventEmitter {
 
         } else {
 
-            if (path.basename(new URL(this.requestURL).pathname).length > 0) {
-                fileName = path.basename(new URL(this.requestURL).pathname);
+            if (path.basename(legacyUrl.parse(this.requestURL).pathname).length > 0) {
+                fileName = path.basename(legacyUrl.parse(this.requestURL).pathname);
             } else {
-                fileName = `${new URL(this.requestURL).hostname}.html`;
+                fileName = `${legacyUrl.parse(this.requestURL).hostname}.html`;
             }
         }
 
