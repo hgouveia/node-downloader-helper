@@ -658,7 +658,7 @@ export class DownloaderHelper extends EventEmitter {
     __getFileNameFromHeaders(headers, response) {
         let fileName = '';
 
-        const fileNameAndEncodingRegExp = /.*filename\*=.*?''([^"].+?[^"])(?:(?:;)|$)/i // match everything after the specified encoding behind a case-insensitive `filename*=`
+        const fileNameAndEncodingRegExp = /.*filename\*=.*?'.*?'([^"].+?[^"])(?:(?:;)|$)/i // match everything after the specified encoding behind a case-insensitive `filename*=`
         const fileNameWithQuotesRegExp = /.*filename="(.*?)";?/i // match everything inside the quotes behind a case-insensitive `filename=`
         const fileNameWithoutQuotesRegExp = /.*filename=([^"].+?[^"])(?:(?:;)|$)/i // match everything immediately after `filename=` that isn't surrounded by quotes and is followed by either a `;` or the end of the string
         

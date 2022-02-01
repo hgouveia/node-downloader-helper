@@ -306,6 +306,8 @@ describe('DownloaderHelper', function () {
                 {header: `attachment;filename*=utf-8''%e2%82%ac% 20rates;filename=EURO rates   `, fileName: '%e2%82%ac% 20rates'},
                 // eslint-disable-next-line quotes
                 {header: `attachment;fIlEnAmE=EURO rates`, fileName: 'EURO rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment; filename*=UTF-8'en'Setup64.exe`, fileName: 'Setup64.exe'},
             ]
             
             tests.forEach(x => {
