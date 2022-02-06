@@ -207,6 +207,16 @@ describe('DownloaderHelper', function () {
             expect(result).to.be.equal(newFileName + '.' + newFilenameExt);
         });
 
+        it("should rename the file name and custom extension when a object is passed in the 'fileName' opts with 'name' and string 'ext' attr", function () {
+            const newFileName = 'mynewname';
+            const newFilenameExt = '7z';
+            const dl = new DownloaderHelper(downloadURL, __dirname, {
+                fileName: { name: newFileName, ext: newFilenameExt }
+            });
+            const result = dl.__getFileNameFromOpts(fileName);
+            expect(result).to.be.equal(newFileName + '.' + newFilenameExt);
+        });
+
         it("should rename the full file name when a object is passed in the 'fileName' opts with 'name' and true in 'ext' attr", function () {
             const newFileName = 'mynewname.7z';
             const dl = new DownloaderHelper(downloadURL, __dirname, {
@@ -216,6 +226,18 @@ describe('DownloaderHelper', function () {
             expect(result).to.be.equal(newFileName);
         });
 
+    });
+
+    describe('__getFileNameFromHeaders', function () {
+        let fileName, fileNameExt;
+
+        beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+            fileName = 'myfilename.zip';
+            fileNameExt = 'zip';
+        });
+
         it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
             const newFileName = 'google.html';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -223,9 +245,9 @@ describe('DownloaderHelper', function () {
             });
             const result = dl.__getFileNameFromHeaders({});
             expect(result).to.be.equal(newFileName);
-        });
-
-        it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
+          });
+          
+          it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
             const newFileName = 'filename.jpg';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
                 fileName: { name: newFileName, ext: true }
@@ -234,9 +256,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(newFileName);
-        });
-
-        it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
+          });
+          
+          it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = '.gitignore';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -246,9 +268,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-        });
-
-        it("should not modify the filename when providing a callback", function () {
+          });
+          
+          it("should not modify the filename when providing a callback", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = newFileName
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -258,6 +280,42 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-        });
-    });
+          });
+          
+          it("should parse all 'content-disposition' headers", function () {
+            const dl = new DownloaderHelper('https://google.com/', __dirname);
+            
+            const tests = [
+                // eslint-disable-next-line quotes
+                {header: `attachment; filename="Setup64.exe"; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe'},
+                // eslint-disable-next-line quotes
+                {header: `attachment; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename="EURO rates";filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename=EURO rates`, fileName: 'EURO rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename=EURO rates; filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment; filename*= UTF-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename="EURO rates"`, fileName: '%e2%82%ac%20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename=EURO rates`, fileName: '%e2%82%ac%20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;filename*=utf-8''%e2%82%ac% 20rates;filename=EURO rates   `, fileName: '%e2%82%ac% 20rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment;fIlEnAmE=EURO rates`, fileName: 'EURO rates'},
+                // eslint-disable-next-line quotes
+                {header: `attachment; filename*=UTF-8'en'Setup64.exe`, fileName: 'Setup64.exe'},
+            ]
+            
+            tests.forEach(x => {
+                expect(dl.__getFileNameFromHeaders({'content-disposition': x.header}, null)).to.be.equal(x.fileName)
+            })
+            
+          });
+
+    })
+    
 });
