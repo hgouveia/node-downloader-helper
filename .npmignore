@@ -12,3 +12,4 @@ appveyor.yml
 CHANGELOG
 CONTRIBUTING.md
 jest.config.js
+sandbox.js
