@@ -130,6 +130,8 @@ interface DownloaderHelperOptions {
   removeOnFail?: boolean;
   /** Behavior when local file already exists (default:false)*/
   override?: boolean | OverrideOptions;
+  /** interval time of the 'progress.throttled' event will be emitted (default:1000) */
+  progressThrottle?: number;
   /** Override the http request options */
   httpRequestOptions?: object;
   /** Override the https request options, ex: to add SSL Certs */
