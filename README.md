@@ -140,7 +140,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 event **skip** `skipInfo` object
 ```javascript
 {
-    totalSize:, // total file size got from the server
+    totalSize:, // total file size got from the server (will be set as 'null' if content-length header is not available)
     fileName:, // original file name
     filePath:, // original path name
     downloadedSize:, // the downloaded amount
@@ -150,7 +150,7 @@ event **skip** `skipInfo` object
 event **download** `downloadInfo` object
 ```javascript
 {
-    totalSize:, // total file size got from the server
+    totalSize:, // total file size got from the server (will be set as 'null' if content-length header is not available)
     fileName:, // assigned name
     filePath:, // download path
     isResumed:, // if the download is a resume,
@@ -162,9 +162,9 @@ event **progress** or **progress.throttled** `stats` object
 ```javascript
 {
     name:, // file name
-    total:, // total size that needs to be downloaded in bytes
+    total:, // total size that needs to be downloaded in bytes, (will be set as 'null' if content-length header is not available)
     downloaded:, // downloaded size in bytes
-    progress:, // progress porcentage 0-100%
+    progress:, // progress porcentage 0-100%, (will be set as 0 if total is null)
     speed: // download speed in bytes
 }
 ```
@@ -174,8 +174,8 @@ event **end** `downloadInfo` object
 {
     fileName:, 
     filePath:,
-    totalSize:, // total file size got from the server
-    incomplete:, // true/false if the download endend but still incomplete
+    totalSize:, // total file size got from the server, (will be set as 'null' if content-length header is not available)
+    incomplete:, // true/false if the download endend but still incomplete, set as 'false' if totalSize is null
     onDiskSize, // total size of file on the disk
     downloadedSize:, // the total size downloaded
 }

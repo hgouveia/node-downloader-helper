@@ -24,7 +24,7 @@ export enum DH_STATES {
 
 interface BaseStats {
   /** total file size got from the server */
-  totalSize: number;
+  totalSize: number | null;
   /** original file name */
   fileName: string;
   /** original path name */
@@ -232,10 +232,10 @@ export class DownloaderHelper extends EventEmitter {
   /**
    * Gets the total file size from the server
    *
-   * @returns {Promise<{name:string, total:number}>}
+   * @returns {Promise<{name:string, total:number|null}>}
    * @memberof DownloaderHelper
    */
-  getTotalSize(): Promise<{ name: string; total: number }>;
+  getTotalSize(): Promise<{ name: string; total: number | null }>;
 
   /**
    * Subscribes to events

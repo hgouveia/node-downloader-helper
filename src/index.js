@@ -271,7 +271,7 @@ export class DownloaderHelper extends EventEmitter {
     /**
      * Gets the total file size from the server
      *
-     * @returns {Promise<{name:string, total:number}>}
+     * @returns {Promise<{name:string, total:number|null}>}
      * @memberof DownloaderHelper
      */
     getTotalSize() {
@@ -287,7 +287,7 @@ export class DownloaderHelper extends EventEmitter {
                         }
                         resolve({
                             name: this.__getFileNameFromHeaders(response.headers, response),
-                            total: parseInt(response.headers['content-length'] || 0)
+                            total: parseInt(response.headers['content-length']) || null
                         });
                     })
                     request.end();
@@ -298,7 +298,7 @@ export class DownloaderHelper extends EventEmitter {
                 }
                 resolve({
                     name: this.__getFileNameFromHeaders(response.headers, response),
-                    total: parseInt(response.headers['content-length'] || 0)
+                    total: parseInt(response.headers['content-length']) || null
                 });
             });
             request.end();
@@ -356,7 +356,7 @@ export class DownloaderHelper extends EventEmitter {
 
             //Stats
             if (!this.__isResumed) {
-                this.__total = parseInt(response.headers['content-length']);
+                this.__total = parseInt(response.headers['content-length']) || null;
                 this.__resetStats();
             }
 
@@ -406,10 +406,11 @@ export class DownloaderHelper extends EventEmitter {
             this.__fileName = this.__filePath.split(path.sep).pop();
             if (fs.existsSync(this.__filePath)) {
                 const downloadedSize = this.__getFilesizeInBytes(this.__filePath);
+                const totalSize = this.__total ? this.__total : 0;
                 if (typeof this.__opts.override === 'object' &&
                     this.__opts.override.skip && (
                         this.__opts.override.skipSmaller ||
-                        downloadedSize >= this.__total)) {
+                        downloadedSize >= totalSize)) {
                     this.emit('skip', {
                         totalSize: this.__total,
                         fileName: this.__fileName,
@@ -503,7 +504,7 @@ export class DownloaderHelper extends EventEmitter {
                         fileName: this.__fileName,
                         filePath: this.__filePath,
                         totalSize: this.__total,
-                        incomplete: this.__downloaded !== this.__total,
+                        incomplete: !this.__total ? false : this.__downloaded !== this.__total,
                         onDiskSize: this.__getFilesizeInBytes(this.__filePath),
                         downloadedSize: this.__downloaded,
                     });
@@ -786,22 +787,23 @@ export class DownloaderHelper extends EventEmitter {
         const currentTime = new Date();
         const elaspsedTime = currentTime - this.__statsEstimate.time;
         const throttleElapseTime = currentTime - this.__statsEstimate.throttleTime;
+        const total = this.__total || 0;
 
         if (!receivedBytes) {
             return;
         }
 
         this.__downloaded += receivedBytes;
-        this.__progress = (this.__downloaded / this.__total) * 100;
+        this.__progress = total === 0 ? 0 : (this.__downloaded / total) * 100;
 
         // Calculate the speed every second or if finished
-        if (this.__downloaded === this.__total || elaspsedTime > 1000) {
+        if (this.__downloaded === total || elaspsedTime > 1000) {
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
         }
 
-        if (this.__downloaded === this.__total || throttleElapseTime > this.__opts.progressThrottle) {
+        if (this.__downloaded === total || throttleElapseTime > this.__opts.progressThrottle) {
             this.__statsEstimate.throttleTime = currentTime;
             this.emit('progress.throttled', this.getStats());
         }

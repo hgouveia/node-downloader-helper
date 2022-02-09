@@ -230,13 +230,9 @@ describe('DownloaderHelper', function () {
     });
 
     describe('__getFileNameFromHeaders', function () {
-        let fileName, fileNameExt;
-
         beforeEach(function () {
             fs.existsSync.mockReturnValue(true);
             fs.statSync.mockReturnValue({ isDirectory: () => true });
-            fileName = 'myfilename.zip';
-            fileNameExt = 'zip';
         });
 
         it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
@@ -319,4 +315,36 @@ describe('DownloaderHelper', function () {
 
     })
 
+    describe('download', function () {
+        it("if the content-length is not present when the download starts, it should return null as totalSize", function (done) {
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            dl.on('download', downloadInfo => {
+                expect(downloadInfo.totalSize).to.be.null;
+                done();
+            });
+            dl.start();
+        });
+
+        it("if the content-length is not present when .getTotalSize() is triggered, should return null as total", function (done) {
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            dl.getTotalSize().then(info => {
+                expect(info.total).to.be.null;
+                done();
+            });
+        });
+    });
 });
