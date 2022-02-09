@@ -1,7 +1,7 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
 const { byteHelper } = require('../bin/helpers');
 const { DownloaderHelper, DH_STATES } = require('../dist');
-const url = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
+const url = 'https://proof.ovh.net/files/1Gb.dat'; // https://proof.ovh.net/files/
 const pkg = require('../package.json');
 const zlib = require('zlib');
 

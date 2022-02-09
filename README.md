@@ -32,7 +32,7 @@ For a more complete example check [example](example/) folder
 
 ```javascript
 const { DownloaderHelper } = require('node-downloader-helper');
-const dl = new DownloaderHelper('http://www.ovh.net/files/1Gio.dat', __dirname);
+const dl = new DownloaderHelper('https://proof.ovh.net/files/1Gb.dat', __dirname);
 
 dl.on('end', () => console.log('Download Completed'))
 dl.start();
@@ -57,6 +57,7 @@ these are the default values
 
 ```javascript
 {
+    body: null, //  Request body, can be any, string, object, etc.
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
@@ -69,6 +70,21 @@ these are the default values
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
 }
+```
+for `body` you can provide any parameter accepted by http.request write function `req.write(body)` https://nodejs.org/api/http.html, when using this, you might need to add the `content-length` and `content-type` header in addition with the http method `POST` or `PUT`
+
+ex: 
+```javascript
+const data = JSON.stringify({
+  todo: 'Buy the milk'
+});
+const dl = new DownloaderHelper('my_url', __dirname, { 
+method: 'POST',
+body: data,
+headers: {
+    'Content-Type': 'application/json',
+    'Content-Length': data.length
+} } );
 ```
 
 for `fileName` you can provide 3 types of parameter

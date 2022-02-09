@@ -113,6 +113,8 @@ interface OverrideOptions {
   skipSmaller?: boolean;
 }
 interface DownloaderHelperOptions {
+  /** parameter accepted by http.request write function req.write(body) (default(null)) */
+  body?: any;
   /** Request Method Verb */
   method?: "GET" | "PUT" | "POST" | "DELETE" | "OPTIONS",
   /** Custom HTTP Header ex: Authorization, User-Agent */

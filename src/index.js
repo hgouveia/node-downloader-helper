@@ -37,6 +37,7 @@ export class DownloaderHelper extends EventEmitter {
         this.url = this.requestURL = url;
         this.state = DH_STATES.IDLE;
         this.__defaultOpts = {
+            body: null,
             retry: false, // { maxRetries: 3, delay: 3000 }
             method: 'GET',
             headers: {},
@@ -319,6 +320,10 @@ export class DownloaderHelper extends EventEmitter {
         this.__request.on('error', this.__onError(this.__promise.resolve, this.__promise.reject));
         this.__request.on('timeout', this.__onTimeout(this.__promise.resolve, this.__promise.reject));
         this.__request.on('uncaughtException', this.__onError(this.__promise.resolve, this.__promise.reject, true));
+
+        if (this.__opts.body) {
+            this.__request.write(this.__opts.body);
+        }
 
         this.__request.end();
     }
@@ -661,7 +666,7 @@ export class DownloaderHelper extends EventEmitter {
         const fileNameAndEncodingRegExp = /.*filename\*=.*?'.*?'([^"].+?[^"])(?:(?:;)|$)/i // match everything after the specified encoding behind a case-insensitive `filename*=`
         const fileNameWithQuotesRegExp = /.*filename="(.*?)";?/i // match everything inside the quotes behind a case-insensitive `filename=`
         const fileNameWithoutQuotesRegExp = /.*filename=([^"].+?[^"])(?:(?:;)|$)/i // match everything immediately after `filename=` that isn't surrounded by quotes and is followed by either a `;` or the end of the string
-        
+
         const ContentDispositionHeaderExists = headers.hasOwnProperty('content-disposition')
         const fileNameAndEncodingMatch = !ContentDispositionHeaderExists ? null : headers['content-disposition'].match(fileNameAndEncodingRegExp)
         const fileNameWithQuotesMatch = (!ContentDispositionHeaderExists || fileNameAndEncodingMatch) ? null : headers['content-disposition'].match(fileNameWithQuotesRegExp)
@@ -680,7 +685,7 @@ export class DownloaderHelper extends EventEmitter {
             } else if (fileNameWithoutQuotesMatch) {
                 fileName = fileNameWithoutQuotesMatch[1];
             }
-            
+
             fileName = fileName.replace(/[/\\]/g, '');
 
         } else {

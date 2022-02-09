@@ -1,5 +1,5 @@
 const fs = require('fs');
-const http = require('http');
+const https = require('https');
 const { join } = require('path');
 const { homedir } = require('os');
 const { expect } = require('chai');
@@ -24,11 +24,12 @@ function getRequestFn(requestOptions) {
             on: jest.fn(),
             end: jest.fn(),
             abort: jest.fn(),
+            write: jest.fn(),
         };
     };
 }
 
-const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
+const downloadURL = 'https://proof.ovh.net/files/1Gb.dat'; // https://proof.ovh.net/files/
 describe('DownloaderHelper', function () {
 
     describe('constructor', function () {
@@ -160,7 +161,7 @@ describe('DownloaderHelper', function () {
             const contentType = 'application/zip';
 
             fs.createWriteStream.mockReturnValue({ on: jest.fn() });
-            http.request.mockImplementation(getRequestFn({
+            https.request.mockImplementation(getRequestFn({
                 statusCode: 200,
                 headers: {
                     'content-type': contentType,
@@ -245,9 +246,9 @@ describe('DownloaderHelper', function () {
             });
             const result = dl.__getFileNameFromHeaders({});
             expect(result).to.be.equal(newFileName);
-          });
-          
-          it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
+        });
+
+        it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
             const newFileName = 'filename.jpg';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
                 fileName: { name: newFileName, ext: true }
@@ -256,9 +257,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(newFileName);
-          });
-          
-          it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
+        });
+
+        it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = '.gitignore';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -268,9 +269,9 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-          });
-          
-          it("should not modify the filename when providing a callback", function () {
+        });
+
+        it("should not modify the filename when providing a callback", function () {
             const newFileName = '.gitignore.';
             const expectedFileName = newFileName
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -280,42 +281,42 @@ describe('DownloaderHelper', function () {
                 'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
             });
             expect(result).to.be.equal(expectedFileName);
-          });
-          
-          it("should parse all 'content-disposition' headers", function () {
+        });
+
+        it("should parse all 'content-disposition' headers", function () {
             const dl = new DownloaderHelper('https://google.com/', __dirname);
-            
+
             const tests = [
                 // eslint-disable-next-line quotes
-                {header: `attachment; filename="Setup64.exe"; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe'},
+                { header: `attachment; filename="Setup64.exe"; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe' },
                 // eslint-disable-next-line quotes
-                {header: `attachment; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe'},
+                { header: `attachment; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename="EURO rates";filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                { header: `attachment;filename="EURO rates";filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename=EURO rates`, fileName: 'EURO rates'},
+                { header: `attachment;filename=EURO rates`, fileName: 'EURO rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename=EURO rates; filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                { header: `attachment;filename=EURO rates; filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment; filename*= UTF-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates'},
+                { header: `attachment; filename*= UTF-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename="EURO rates"`, fileName: '%e2%82%ac%20rates'},
+                { header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename="EURO rates"`, fileName: '%e2%82%ac%20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename=EURO rates`, fileName: '%e2%82%ac%20rates'},
+                { header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename=EURO rates`, fileName: '%e2%82%ac%20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;filename*=utf-8''%e2%82%ac% 20rates;filename=EURO rates   `, fileName: '%e2%82%ac% 20rates'},
+                { header: `attachment;filename*=utf-8''%e2%82%ac% 20rates;filename=EURO rates   `, fileName: '%e2%82%ac% 20rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment;fIlEnAmE=EURO rates`, fileName: 'EURO rates'},
+                { header: `attachment;fIlEnAmE=EURO rates`, fileName: 'EURO rates' },
                 // eslint-disable-next-line quotes
-                {header: `attachment; filename*=UTF-8'en'Setup64.exe`, fileName: 'Setup64.exe'},
+                { header: `attachment; filename*=UTF-8'en'Setup64.exe`, fileName: 'Setup64.exe' },
             ]
-            
+
             tests.forEach(x => {
-                expect(dl.__getFileNameFromHeaders({'content-disposition': x.header}, null)).to.be.equal(x.fileName)
+                expect(dl.__getFileNameFromHeaders({ 'content-disposition': x.header }, null)).to.be.equal(x.fileName)
             })
-            
-          });
+
+        });
 
     })
-    
+
 });
