@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-import * as legacyUrl from 'url';
+import { URL } from 'url';
 import * as path from 'path';
 import * as http from 'http';
 import * as https from 'https';
@@ -279,7 +279,9 @@ export class DownloaderHelper extends EventEmitter {
         return new Promise((resolve, reject) => {
             const request = this.__protocol.request(options, response => {
                 if (this.__isRequireRedirect(response)) {
-                    const redirectedURL = legacyUrl.resolve(this.url, response.headers.location);
+                    const redirectedURL = /^https?:\/\//.test(response.headers.location)
+                        ? response.headers.location
+                        : new URL(response.headers.location, this.url).href;
                     const options = this.__getOptions('HEAD', redirectedURL, this.__headers);
                     const request = this.__protocol.request(options, response => {
                         if (response.statusCode !== 200) {
@@ -362,7 +364,9 @@ export class DownloaderHelper extends EventEmitter {
 
             // Handle Redirects
             if (this.__isRequireRedirect(response)) {
-                const redirectedURL = legacyUrl.resolve(this.url, response.headers.location);
+                const redirectedURL = /^https?:\/\//.test(response.headers.location)
+                    ? response.headers.location
+                    : new URL(response.headers.location, this.url).href;
                 this.__isRedirected = true;
                 this.__initProtocol(redirectedURL);
                 return this.__start();
@@ -691,10 +695,10 @@ export class DownloaderHelper extends EventEmitter {
 
         } else {
 
-            if (path.basename(legacyUrl.parse(this.requestURL).pathname).length > 0) {
-                fileName = path.basename(legacyUrl.parse(this.requestURL).pathname);
+            if (path.basename(new URL(this.requestURL).pathname).length > 0) {
+                fileName = path.basename(new URL(this.requestURL).pathname);
             } else {
-                fileName = `${legacyUrl.parse(this.requestURL).hostname}.html`;
+                fileName = `${new URL(this.requestURL).hostname}.html`;
             }
         }
 
@@ -833,12 +837,12 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __getOptions(method, url, headers = {}) {
-        const urlParse = legacyUrl.parse(url);
+        const urlParse = new URL(url);
         const options = {
             protocol: urlParse.protocol,
             host: urlParse.hostname,
             port: urlParse.port,
-            path: urlParse.path,
+            path: urlParse.pathname,
             method: method
         };
 

@@ -1,6 +1,6 @@
 {
   "name": "node-downloader-helper",
-  "version": "1.0.19",
+  "version": "2.0.0",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
@@ -9,7 +9,7 @@
     "lint": "./node_modules/.bin/eslint src",
     "build": "./node_modules/.bin/babel --presets minify -d ./dist ./src",
     "watch": "./node_modules/.bin/babel --watch ./src/index.js -o ./dist/index.js",
-    "test": "npm run lint && npm run build && jest"
+    "test": "npm run lint && jest"
   },
   "pre-commit": [
     "test"
@@ -37,7 +37,7 @@
     "ndh": "bin/ndh"
   },
   "engines": {
-    "node": ">=6.9"
+    "node": ">=14.18"
   },
   "devDependencies": {
     "@types/node": "^14.14.31",

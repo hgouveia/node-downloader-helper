@@ -3,7 +3,7 @@ const https = require('https');
 const { join } = require('path');
 const { homedir } = require('os');
 const { expect } = require('chai');
-const { DownloaderHelper } = require('../dist');
+const { DownloaderHelper } = require('../src');
 
 jest.mock('fs');
 jest.mock('http');
