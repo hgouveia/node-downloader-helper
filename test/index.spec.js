@@ -1,11 +1,35 @@
-const { join } = require('path');
-const { DownloaderHelper } = require('../dist');
-const { expect } = require('chai');
-const { homedir } = require('os');
 const fs = require('fs');
-jest.mock('fs');
+const https = require('https');
+const { join } = require('path');
+const { homedir } = require('os');
+const { expect } = require('chai');
+const { DownloaderHelper } = require('../src');
 
-const downloadURL = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
+jest.mock('fs');
+jest.mock('http');
+jest.mock('https');
+
+// http/https request object
+function getRequestFn(requestOptions) {
+    return (opts, callback) => {
+        callback({
+            body: requestOptions.body || '',
+            on: jest.fn(),
+            pipe: jest.fn(),
+            statusCode: requestOptions.statusCode || 200,
+            headers: requestOptions.headers || {},
+            unpipe: jest.fn(),
+        });
+        return {
+            on: jest.fn(),
+            end: jest.fn(),
+            abort: jest.fn(),
+            write: jest.fn(),
+        };
+    };
+}
+
+const downloadURL = 'https://proof.ovh.net/files/1Gb.dat'; // https://proof.ovh.net/files/
 describe('DownloaderHelper', function () {
 
     describe('constructor', function () {
@@ -131,6 +155,31 @@ describe('DownloaderHelper', function () {
             dl.__getFileNameFromOpts(fileName);
         });
 
+        it("callback should return fileName, filePath and contentType if a response is provided", function (done) {
+            const fileNameFromURL = downloadURL.split('/').pop();
+            const fullPath = join(__dirname, fileNameFromURL);
+            const contentType = 'application/zip';
+
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': contentType,
+                }
+            }));
+
+            const dl = new DownloaderHelper(downloadURL, __dirname, {
+                fileName: function (_fileName, _filePath, _contentType) {
+                    expect(_fileName).to.be.equal(fileNameFromURL);
+                    expect(_filePath).to.be.equal(fullPath);
+                    expect(_contentType).to.be.equal(contentType);
+                    done();
+                    return fileNameFromURL;
+                }
+            });
+            dl.start();
+        });
+
         it("should rename only the file name and not the extension when a object is passed in the 'fileName' opts with only 'name' attr", function () {
             const newFileName = 'mynewname';
             const dl = new DownloaderHelper(downloadURL, __dirname, {
@@ -159,6 +208,16 @@ describe('DownloaderHelper', function () {
             expect(result).to.be.equal(newFileName + '.' + newFilenameExt);
         });
 
+        it("should rename the file name and custom extension when a object is passed in the 'fileName' opts with 'name' and string 'ext' attr", function () {
+            const newFileName = 'mynewname';
+            const newFilenameExt = '7z';
+            const dl = new DownloaderHelper(downloadURL, __dirname, {
+                fileName: { name: newFileName, ext: newFilenameExt }
+            });
+            const result = dl.__getFileNameFromOpts(fileName);
+            expect(result).to.be.equal(newFileName + '.' + newFilenameExt);
+        });
+
         it("should rename the full file name when a object is passed in the 'fileName' opts with 'name' and true in 'ext' attr", function () {
             const newFileName = 'mynewname.7z';
             const dl = new DownloaderHelper(downloadURL, __dirname, {
@@ -166,6 +225,126 @@ describe('DownloaderHelper', function () {
             });
             const result = dl.__getFileNameFromOpts(fileName);
             expect(result).to.be.equal(newFileName);
+        });
+
+    });
+
+    describe('__getFileNameFromHeaders', function () {
+        beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+        });
+
+        it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
+            const newFileName = 'google.html';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({});
+            expect(result).to.be.equal(newFileName);
+        });
+
+        it("should *not* append '.html' to a file if there *is* 'content-disposition' header but no 'path'", function () {
+            const newFileName = 'filename.jpg';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({
+                'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
+            });
+            expect(result).to.be.equal(newFileName);
+        });
+
+        it("should keep leading dots but remove trailing dots for auto-generated file names", function () {
+            const newFileName = '.gitignore.';
+            const expectedFileName = '.gitignore';
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                // fileName: { name: newFileName, ext: true }
+            });
+            const result = dl.__getFileNameFromHeaders({
+                'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
+            });
+            expect(result).to.be.equal(expectedFileName);
+        });
+
+        it("should not modify the filename when providing a callback", function () {
+            const newFileName = '.gitignore.';
+            const expectedFileName = newFileName
+            const dl = new DownloaderHelper('https://google.com/', __dirname, {
+                fileName: () => '.gitignore.'
+            });
+            const result = dl.__getFileNameFromHeaders({
+                'content-disposition': 'Content-Disposition: attachment; filename="' + newFileName + '"',
+            });
+            expect(result).to.be.equal(expectedFileName);
+        });
+
+        it("should parse all 'content-disposition' headers", function () {
+            const dl = new DownloaderHelper('https://google.com/', __dirname);
+
+            const tests = [
+                // eslint-disable-next-line quotes
+                { header: `attachment; filename="Setup64.exe"; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe' },
+                // eslint-disable-next-line quotes
+                { header: `attachment; filename*=UTF-8''Setup64.exe`, fileName: 'Setup64.exe' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename="EURO rates";filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename=EURO rates`, fileName: 'EURO rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename=EURO rates; filename*=utf-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment; filename*= UTF-8''%e2%82%ac%20rates`, fileName: '%e2%82%ac%20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename="EURO rates"`, fileName: '%e2%82%ac%20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename*=utf-8''%e2%82%ac%20rates;filename=EURO rates`, fileName: '%e2%82%ac%20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;filename*=utf-8''%e2%82%ac% 20rates;filename=EURO rates   `, fileName: '%e2%82%ac% 20rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment;fIlEnAmE=EURO rates`, fileName: 'EURO rates' },
+                // eslint-disable-next-line quotes
+                { header: `attachment; filename*=UTF-8'en'Setup64.exe`, fileName: 'Setup64.exe' },
+            ]
+
+            tests.forEach(x => {
+                expect(dl.__getFileNameFromHeaders({ 'content-disposition': x.header }, null)).to.be.equal(x.fileName)
+            })
+
+        });
+
+    })
+
+    describe('download', function () {
+        it("if the content-length is not present when the download starts, it should return null as totalSize", function (done) {
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            dl.on('download', downloadInfo => {
+                expect(downloadInfo.totalSize).to.be.null;
+                done();
+            });
+            dl.start();
+        });
+
+        it("if the content-length is not present when .getTotalSize() is triggered, should return null as total", function (done) {
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementation(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            dl.getTotalSize().then(info => {
+                expect(info.total).to.be.null;
+                done();
+            });
         });
     });
 });

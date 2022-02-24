@@ -1,0 +1,15 @@
+.github/
+node_modules/
+example/
+src/
+test/
+.babelrc
+.eslintrc
+.gitignore
+.gitlab-ci.yml
+.travis.yml
+appveyor.yml
+CHANGELOG
+CONTRIBUTING.md
+jest.config.js
+sandbox.js

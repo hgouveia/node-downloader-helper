@@ -1,9 +1,23 @@
 /*eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
-const { DownloaderHelper } = require('../dist');
-const { byteHelper, pauseResumeTimer } = require('./helpers');
-const url = 'http://www.ovh.net/files/1Gio.dat'; // http://www.ovh.net/files/
+const { byteHelper } = require('../bin/helpers');
+const { DownloaderHelper, DH_STATES } = require('../dist');
+const url = 'https://proof.ovh.net/files/1Gb.dat'; // https://proof.ovh.net/files/
 const pkg = require('../package.json');
 const zlib = require('zlib');
+
+const pauseResumeTimer = (_dl, wait) => {
+    setTimeout(() => {
+        if (_dl.state === DH_STATES.FINISHED ||
+            _dl.state === DH_STATES.FAILED) {
+            return;
+        }
+
+        _dl.pause()
+            .then(() => console.log(`Paused for ${wait / 1000} seconds`))
+            .then(() => setTimeout(() => _dl.resume(), wait));
+
+    }, wait);
+};
 
 // these are the default options
 const options = {
@@ -40,14 +54,15 @@ dl
     .on('skip', skipInfo =>
         console.log('Download skipped. File already exists: ', skipInfo))
     .on('error', err => console.error('Something happened', err))
-    .on('retry', (attempt, opts) => {
-        console.log(
-            'Retry Attempt:', attempt + '/' + opts.maxRetries,
-            'Starts on:', opts.delay / 1000, 'secs'
-        );
+    .on('retry', (attempt, opts, err) => {
+        console.log({
+            RetryAttempt: `${attempt}/${opts.maxRetries}`,
+            StartsOn: `${opts.delay / 1000} secs`,
+            Reason: err ? err.message : 'unknown'
+        });
     })
     .on('resume', isResumed => {
-        // is resume is not supported, 
+        // is resume is not supported,  
         // a new pipe instance needs to be attached
         if (!isResumed) {
             dl.unpipe();

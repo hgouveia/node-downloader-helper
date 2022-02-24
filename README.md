@@ -32,7 +32,7 @@ For a more complete example check [example](example/) folder
 
 ```javascript
 const { DownloaderHelper } = require('node-downloader-helper');
-const dl = new DownloaderHelper('http://www.ovh.net/files/1Gio.dat', __dirname);
+const dl = new DownloaderHelper('https://proof.ovh.net/files/1Gb.dat', __dirname);
 
 dl.on('end', () => console.log('Download Completed'))
 dl.start();
@@ -57,22 +57,39 @@ these are the default values
 
 ```javascript
 {
+    body: null, //  Request body, can be any, string, object, etc.
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
-    fileName: string|cb(fileName, filePath)|{name, ext}, // Custom filename when saved
+    fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
     retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)
+    progressThrottle: 1000, // interval time of the 'progress.throttled' event will be emitted
     override: boolean|{skip, skipSmaller}, // Behavior when local file already exists
     httpRequestOptions: {}, // Override the http request options  
     httpsRequestOptions: {}, // Override the https request options, ex: to add SSL Certs
 }
 ```
+for `body` you can provide any parameter accepted by http.request write function `req.write(body)` https://nodejs.org/api/http.html, when using this, you might need to add the `content-length` and `content-type` header in addition with the http method `POST` or `PUT`
+
+ex: 
+```javascript
+const data = JSON.stringify({
+  todo: 'Buy the milk'
+});
+const dl = new DownloaderHelper('my_url', __dirname, { 
+method: 'POST',
+body: data,
+headers: {
+    'Content-Type': 'application/json',
+    'Content-Length': data.length
+} } );
+```
 
 for `fileName` you can provide 3 types of parameter
  - **string**: will use the full string as the filename including extension
- - **callback(fileName, filePath)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;` 
+ - **callback(fileName, filePath, contentType)**: must return an string, only sync function are supported ex: `(fileName) => 'PREFIX_' + fileName;`, **contentType** will be provided if available
  - **object**: this object must contain a `name` attribute and an optional `ext` attribute, the `ext` attribute can be an string without dot(`.`) or a boolean where `true` use the `name` as full file name (same as just giving an string to the `fileName` parameter) or false *(default)* will only replace the name and keep the original extension, for example if the original name is `myfile.zip` and the option is `{name: 'somename'}` the output will be `somename.zip`
 
 for `override` you can provide 2 types of parameter
@@ -110,7 +127,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | download     	| Emitted when the download starts `callback(downloadInfo)`        	                    |
 | progress     	| Emitted every time gets data from the server `callback(stats)` 	                    |
 | progress.throttled| The same as `progress` but emits every 1 second while is downloading `callback(stats)` |
-| retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts)`   |
+| retry        	| Emitted when the download fails and retry is enabled `callback(attempt, retryOpts, err)`   |
 | end          	| Emitted when the downloading has finished `callback(downloadInfo)`                    |
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
@@ -123,7 +140,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 event **skip** `skipInfo` object
 ```javascript
 {
-    totalSize:, // total file size got from the server
+    totalSize:, // total file size got from the server (will be set as 'null' if content-length header is not available)
     fileName:, // original file name
     filePath:, // original path name
     downloadedSize:, // the downloaded amount
@@ -133,7 +150,7 @@ event **skip** `skipInfo` object
 event **download** `downloadInfo` object
 ```javascript
 {
-    totalSize:, // total file size got from the server
+    totalSize:, // total file size got from the server (will be set as 'null' if content-length header is not available)
     fileName:, // assigned name
     filePath:, // download path
     isResumed:, // if the download is a resume,
@@ -145,9 +162,9 @@ event **progress** or **progress.throttled** `stats` object
 ```javascript
 {
     name:, // file name
-    total:, // total size that needs to be downloaded in bytes
+    total:, // total size that needs to be downloaded in bytes, (will be set as 'null' if content-length header is not available)
     downloaded:, // downloaded size in bytes
-    progress:, // progress porcentage 0-100%
+    progress:, // progress porcentage 0-100%, (will be set as 0 if total is null)
     speed: // download speed in bytes
 }
 ```
@@ -157,8 +174,8 @@ event **end** `downloadInfo` object
 {
     fileName:, 
     filePath:,
-    totalSize:, // total file size got from the server
-    incomplete:, // true/false if the download endend but still incomplete
+    totalSize:, // total file size got from the server, (will be set as 'null' if content-length header is not available)
+    incomplete:, // true/false if the download endend but still incomplete, set as 'false' if totalSize is null
     onDiskSize, // total size of file on the disk
     downloadedSize:, // the total size downloaded
 }

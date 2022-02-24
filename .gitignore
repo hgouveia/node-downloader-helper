@@ -4,3 +4,5 @@ package-lock.json
 *.log*
 example/*
 !example/*.js
+dist
+sandbox.js
