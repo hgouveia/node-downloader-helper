@@ -654,7 +654,8 @@ export class DownloaderHelper extends EventEmitter {
         this.__statsEstimate = {
             time: 0,
             bytes: 0,
-            prevBytes: 0
+            prevBytes: 0,
+            throttleTime: 0,
         };
     }
 
