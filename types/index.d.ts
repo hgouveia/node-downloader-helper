@@ -56,6 +56,13 @@ interface FileRenamedStats {
   prevFileName: string;
 }
 
+interface IResumeState {
+  downloaded?: number;
+  filePath?: string;
+  fileName?: string;
+  total?: number;
+}
+
 interface ErrorStats {
   /** Error message */
   message: string;
@@ -124,6 +131,10 @@ interface DownloaderHelperOptions {
   /** Custom filename when saved */
   fileName?: string | FilenameCallback | FilenameDefinition;
   retry?: boolean | RetryOptions;
+  /* Request timeout in milliseconds (-1 use default), is the equivalent of 'httpRequestOptions: { timeout: value }' (also applied to https) */
+  timeout?: number;
+  /** it will resume if a file already exists and is not completed, you might want to set removeOnStop and removeOnFail to false. If you used pipe for compression it will produce corrupted files */
+  resumeIfFileExists?: boolean;
   /** If the server does not return the "accept-ranges" header, can be force if it does support it */
   forceResume?: boolean;
   /** remove the file when is stopped (default:true) */
@@ -247,4 +258,23 @@ export class DownloaderHelper extends EventEmitter {
    * @memberof EventEmitter
    */
   on<E extends keyof DownloadEvents>(event: E, callback: DownloadEvents[E]): any;
+
+  /**
+ * Get the state required to resume the download after restart. This state
+ * can be passed back to `resumeFromFile()` to resume a download
+ * 
+ * @returns {IResumeState} Returns the state required to resume
+ * @memberof DownloaderHelper
+ */
+  getResumeState(): IResumeState;
+
+  /**
+  * 
+  * @param {string} filePath - The path to the file to resume from ex: C:\Users\{user}\Downloads\file.txt
+  * @param {IResumeState} state - (optionl) resume download state, if not provided it will try to fetch from the headers and filePath
+  *
+  * @returns {Promise<boolean>} - Returns the same result as `start()`
+  * @memberof DownloaderHelper
+  */
+  resumeFromFile(filePath: string, state?: IResumeState): Promise<boolean>;
 }

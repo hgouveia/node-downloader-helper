@@ -49,7 +49,8 @@ export class DownloaderHelper extends EventEmitter {
             removeOnFail: true,
             progressThrottle: 1000,
             httpRequestOptions: {},
-            httpsRequestOptions: {}
+            httpsRequestOptions: {},
+            resumeIfFileExists: false,
         };
         this.__opts = Object.assign({}, this.__defaultOpts);
         this.__pipes = [];
@@ -83,10 +84,29 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     start() {
-        return new Promise((resolve, reject) => {
+        const startPromise = () => new Promise((resolve, reject) => {
             this.__promise = { resolve, reject };
             this.__start();
         });
+
+        // this will determine the file path from the headers
+        // and attempt to get the file size and resume if possible
+        if (this.__opts.resumeIfFileExists && this.state !== this.__states.RESUMED) {
+            return this.getTotalSize().then(({ name, total }) => {
+                const override = this.__opts.override;
+                this.__opts.override = true;
+                this.__filePath = this.__getFilePath(name);
+                this.__opts.override = override;
+                if (this.__filePath && fs.existsSync(this.__filePath)) {
+                    const fileSize = this.__getFilesizeInBytes(this.__filePath);
+                    return fileSize !== total
+                        ? this.resumeFromFile(this.__filePath, { total, fileName: name })
+                        : startPromise();
+                }
+                return startPromise();
+            });
+        }
+        return startPromise();
     }
 
     /**
@@ -132,7 +152,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__setState(this.__states.RESUMED);
         if (this.__isResumable) {
             this.__isResumed = true;
-            this.__options['headers']['range'] = 'bytes=' + this.__downloaded + '-';
+            this.__options['headers']['range'] = `bytes=${this.__downloaded}-`;
         }
         this.emit('resume', this.__isResumed);
         return this.__start();
@@ -287,14 +307,18 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     getTotalSize() {
-        const options = this.__getOptions('HEAD', this.url, this.__headers);
+        const headers = Object.assign({}, this.__headers);
+        if (headers.hasOwnProperty('range')) {
+            delete headers['range'];
+        }
+        const options = this.__getOptions('HEAD', this.url, headers);
         return new Promise((resolve, reject) => {
             const request = this.__protocol.request(options, response => {
                 if (this.__isRequireRedirect(response)) {
                     const redirectedURL = /^https?:\/\//.test(response.headers.location)
                         ? response.headers.location
                         : new URL(response.headers.location, this.url).href;
-                    const options = this.__getOptions('HEAD', redirectedURL, this.__headers);
+                    const options = this.__getOptions('HEAD', redirectedURL, headers);
                     const request = this.__protocol.request(options, response => {
                         if (response.statusCode !== 200) {
                             reject(new Error(`Response status was ${response.statusCode}`));
@@ -317,6 +341,53 @@ export class DownloaderHelper extends EventEmitter {
             });
             request.end();
         });
+    }
+
+    /**
+     * Get the state required to resume the download after restart. This state
+     * can be passed back to `resumeFromFile()` to resume a download
+     * 
+     * @returns {Object} Returns the state required to resume
+     * @memberof DownloaderHelper
+     */
+    getResumeState() {
+        return {
+            downloaded: this.__downloaded,
+            filePath: this.__filePath,
+            fileName: this.__fileName,
+            total: this.__total,
+        };
+    }
+
+    /**
+     * Resume the download from a previous file path
+     * 
+     * @param {string} filePath - The path to the file to resume from ex: C:\Users\{user}\Downloads\file.txt
+     * @param {Object} state - (optionl) resume download state, if not provided it will try to fetch from the headers and filePath
+     * 
+     * @returns {Promise<boolean>} - Returns the same result as `start()`
+     * @memberof DownloaderHelper
+     */
+    resumeFromFile(filePath, state = {}) {
+        this.__opts.override = true;
+        this.__filePath = filePath;
+        return ((state.total && state.fileName)
+            ? Promise.resolve({ name: state.fileName, total: state.total })
+            : this.getTotalSize())
+            .then(({ name, total }) => {
+                this.__total = state.total || total;
+                this.__fileName = state.fileName || name;
+                this.__downloaded = state.downloaded || this.__getFilesizeInBytes(this.__filePath);
+                this.__options['headers']['range'] = `bytes=${this.__downloaded}-`;
+                this.__isResumed = true;
+                this.__isResumable = true;
+                this.__setState(this.__states.RESUMED);
+                this.emit('resume', this.__isResumed);
+                return new Promise((resolve, reject) => {
+                    this.__promise = { resolve, reject };
+                    this.__start();
+                });
+            });
     }
 
     __start() {

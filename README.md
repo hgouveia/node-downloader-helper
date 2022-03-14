@@ -64,6 +64,7 @@ these are the default values
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     timeout: -1, // Request timeout in milliseconds (-1 use default), is the equivalent of 'httpRequestOptions: { timeout: value }' (also applied to https)
+    resumeIfFileExists: false, // it will resume if a file already exists and is not completed, you might want to set removeOnStop and removeOnFail to false. If you used pipe for compression it will produce corrupted files
     fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
     retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
@@ -120,7 +121,26 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | getTotalSize 	| gets the total file size from the server                                  |
 | getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
 | isResumable   	| return true/false if the download can be resumable (available after the start phase) |
+| getResumeState   	| Get the state required to resume the download after restart. This state can be passed back to `resumeFromFile()` to resume a download |
+| resumeFromFile   	| `resumeFromFile(filePath?: string, state?: IResumeState)` Resume the download from a previous file path, if the state is not provided it will try to fetch from the information the headers and filePath, @see `resumeIfFileExists` option |
 
+usage of `resumeFromFile`
+
+```javascript
+const downloadDir = 'D:/TEMP';
+const { DownloaderHelper } = require('node-downloader-helper');
+const dl = new DownloaderHelper('https://proof.ovh.net/files/1Gb.dat', downloadDir);
+dl.on('end', () => console.log('Download Completed'));
+dl.on('error', (err) => console.log('Download Failed', err));
+
+// option 1
+const prevFilePath = `${downloadDir}/1Gb.dat`;
+dl.resumeFromFile(prevFilePath).catch(err => console.error(err));
+
+// option 2
+const prevState = dl.getResumeState(); // this should be stored in a file, localStorage, db, etc in a previous process for example on 'stop'
+dl.resumeFromFile(prevState.filePath, prevState).catch(err => console.error(err));
+```
 
 ## Events
 
