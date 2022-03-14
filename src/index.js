@@ -28,7 +28,7 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     constructor(url, destFolder, options = {}) {
-        super();
+        super({ captureRejections: true });
 
         if (!this.__validate(url, destFolder)) {
             return;
@@ -95,6 +95,10 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     pause() {
+        if (this.state === this.__states.STOPPED) {
+            return Promise.resolve(true);
+        }
+
         this.__requestAbort();
 
         if (this.__response) {
@@ -120,6 +124,10 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     resume() {
+        if (this.state === this.__states.STOPPED) {
+            return;
+        }
+
         this.__setState(this.__states.RESUMED);
         if (this.__isResumable) {
             this.__isResumed = true;
@@ -136,16 +144,14 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     stop() {
-        const emitStop = () => {
-            this.__resolvePending();
-            this.__setState(this.__states.STOPPED);
-            this.emit('stop');
-        };
+        if (this.state === this.__states.STOPPED) {
+            return Promise.resolve(true);
+        }
         const removeFile = () => new Promise((resolve, reject) => {
             fs.access(this.__filePath, _accessErr => {
                 // if can't access, probably is not created yet
                 if (_accessErr) {
-                    emitStop();
+                    this.__emitStop();
                     return resolve(true);
                 }
 
@@ -155,7 +161,7 @@ export class DownloaderHelper extends EventEmitter {
                         this.emit('error', _err);
                         return reject(_err);
                     }
-                    emitStop();
+                    this.__emitStop();
                     resolve(true);
                 });
             });
@@ -167,7 +173,7 @@ export class DownloaderHelper extends EventEmitter {
             if (this.__opts.removeOnStop) {
                 return removeFile();
             }
-            emitStop();
+            this.__emitStop();
             return Promise.resolve(true);
         });
     }
@@ -560,7 +566,7 @@ export class DownloaderHelper extends EventEmitter {
             }
 
             if (!this.__opts.retry) {
-                return this.__removeFile().then(() => {
+                return this.__removeFile().finally(() => {
                     this.__setState(this.__states.FAILED);
                     this.emit('error', err);
                     reject(err);
@@ -568,7 +574,7 @@ export class DownloaderHelper extends EventEmitter {
             }
             return this.__retry(err)
                 .catch(_err => {
-                    this.__removeFile().then(() => {
+                    this.__removeFile().finally(() => {
                         this.__setState(this.__states.FAILED);
                         this.emit('error', _err ? _err : err);
                         reject(_err ? _err : err);
@@ -620,7 +626,7 @@ export class DownloaderHelper extends EventEmitter {
             this.__requestAbort();
 
             if (!this.__opts.retry) {
-                return this.__removeFile().then(() => {
+                return this.__removeFile().finally(() => {
                     this.__setState(this.__states.FAILED);
                     this.emit('timeout');
                     reject(new Error('timeout'));
@@ -629,7 +635,7 @@ export class DownloaderHelper extends EventEmitter {
 
             return this.__retry(new Error('timeout'))
                 .catch(_err => {
-                    this.__removeFile().then(() => {
+                    this.__removeFile().finally(() => {
                         this.__setState(this.__states.FAILED);
                         if (_err) {
                             reject(_err);
@@ -976,9 +982,24 @@ export class DownloaderHelper extends EventEmitter {
             if (!this.__fileStream) {
                 return resolve();
             }
-            this.__fileStream.close(() => {
+            this.__fileStream.close((err) => {
+                if (err) {
+                    this.emit('warning', err);
+                }
                 if (this.__opts.removeOnFail) {
-                    return fs.unlink(this.__filePath, () => resolve());
+                    return fs.access(this.__filePath, _accessErr => {
+                        // if can't access, probably is not created yet
+                        if (_accessErr) {
+                            return resolve();
+                        }
+
+                        fs.unlink(this.__filePath, (_err) => {
+                            if (_err) {
+                                this.emit('warning', err);
+                            }
+                            resolve();
+                        });
+                    });
                 }
                 resolve();
             });
@@ -1003,5 +1024,14 @@ export class DownloaderHelper extends EventEmitter {
                 this.__request.abort();
             }
         }
+    }
+
+    /**
+     * @memberof DownloaderHelper
+     */
+    __emitStop() {
+        this.__resolvePending();
+        this.__setState(this.__states.STOPPED);
+        this.emit('stop');
     }
 }

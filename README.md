@@ -34,9 +34,12 @@ For a more complete example check [example](example/) folder
 const { DownloaderHelper } = require('node-downloader-helper');
 const dl = new DownloaderHelper('https://proof.ovh.net/files/1Gb.dat', __dirname);
 
-dl.on('end', () => console.log('Download Completed'))
-dl.start();
+dl.on('end', () => console.log('Download Completed'));
+dl.on('error', (err) => console.log('Download Failed', err));
+dl.start().catch(err => console.error(err));
 ```
+
+**IMPORTANT NOTE:** I highly recommend to use both `.on('error')` and `.start().catch`, although they do the same thing, if `on('error')` is not defined, an error will be thrown when the `error` event is emitted and not listing, this is because EventEmitter is designed to throw an `unhandled error event` error if not been listened and is too late to change it now.
 
 ### CLI
 
@@ -136,6 +139,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | stop         	| Emitted when the .stop method is called                       	                    |
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
+| warning   	| Emitted when an error occurs that was not thrown intentionally `callback(err: Error)` |
 
 event **skip** `skipInfo` object
 ```javascript

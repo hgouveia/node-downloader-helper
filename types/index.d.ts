@@ -93,6 +93,8 @@ interface DownloadEvents {
   renamed: (stats: FileRenamedStats) => any;
   /** Emitted when the state changes */
   stateChanged: (state: DH_STATES) => any;
+  /** Emitted when an error occurs that was not thrown intentionally  */
+  warning: (error: Error) => any;
 }
 type FilenameCallback = (fileName: string, filePath: string) => string;
 interface FilenameDefinition {
