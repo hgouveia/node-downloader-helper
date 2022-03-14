@@ -42,6 +42,7 @@ export class DownloaderHelper extends EventEmitter {
             method: 'GET',
             headers: {},
             fileName: '',
+            timeout: -1, // -1 use default
             override: false, // { skip: false, skipSmaller: false }
             forceResume: false,
             removeOnStop: true,
@@ -248,6 +249,11 @@ export class DownloaderHelper extends EventEmitter {
     updateOptions(options) {
         this.__opts = Object.assign({}, this.__opts, options);
         this.__headers = this.__opts.headers;
+
+        if (this.__opts.timeout > -1) {
+            this.__opts.httpRequestOptions.timeout = this.__opts.timeout;
+            this.__opts.httpsRequestOptions.timeout = this.__opts.timeout;
+        }
 
         // validate the progressThrottle, if invalid, use the default
         if (typeof this.__opts.progressThrottle !== 'number' || this.__opts.progressThrottle < 0) {

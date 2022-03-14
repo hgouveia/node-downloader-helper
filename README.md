@@ -63,6 +63,7 @@ these are the default values
     body: null, //  Request body, can be any, string, object, etc.
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
+    timeout: -1, // Request timeout in milliseconds (-1 use default), is the equivalent of 'httpRequestOptions: { timeout: value }' (also applied to https)
     fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
     retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
