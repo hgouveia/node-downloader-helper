@@ -868,9 +868,17 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __getFilesizeInBytes(filePath) {
-        const stats = fs.statSync(filePath, false);
-        const fileSizeInBytes = stats.size || 0;
-        return fileSizeInBytes;
+        try {
+            // 'throwIfNoEntry' was implemented on Node.js v14.17.0
+            // so we added try/catch in case is using an older version
+            const stats = fs.statSync(filePath, { throwIfNoEntry: false });
+            const fileSizeInBytes = stats.size || 0;
+            return fileSizeInBytes;
+        } catch (err) {
+            // mostly probably the file doesn't exist
+            this.emit('warning', err);
+        }
+        return 0;
     }
 
     /**
