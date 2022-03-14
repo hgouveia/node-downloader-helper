@@ -313,6 +313,21 @@ describe('DownloaderHelper', function () {
 
         });
 
+        describe('__getOptions', () => {
+            it("it should return the correct parsed options", function () {
+                const dl = new DownloaderHelper('https://www.google.com/search?q=javascript', __dirname, {
+                    headers: { 'user-agent': 'my-user-agent' }
+                });
+                const options = dl.__getOptions(dl.__opts.method, dl.url, dl.__opts.headers);
+                expect(options.protocol).to.be.equal('https:');
+                expect(options.host).to.be.equal('www.google.com');
+                expect(options.port).to.be.equal('');
+                expect(options.method).to.be.equal('GET');
+                expect(options.path).to.be.equal('/search?q=javascript');
+                expect(options.headers['user-agent']).to.be.equal('my-user-agent');
+            });
+
+        });
     })
 
     describe('download', function () {

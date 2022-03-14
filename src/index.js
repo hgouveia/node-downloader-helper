@@ -842,8 +842,8 @@ export class DownloaderHelper extends EventEmitter {
             protocol: urlParse.protocol,
             host: urlParse.hostname,
             port: urlParse.port,
-            path: urlParse.pathname,
-            method: method
+            path: urlParse.pathname + urlParse.search,
+            method,
         };
 
         if (headers) {
