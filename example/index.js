@@ -19,12 +19,11 @@ const pauseResumeTimer = (_dl, wait) => {
     }, wait);
 };
 
-// these are the default options
 const options = {
     method: 'GET', // Request Method Verb
     // Custom HTTP Header ex: Authorization, User-Agent
     headers: {
-        'user-agent': pkg.name + '@' + pkg.version
+        'user-agent': pkg.name + '/' + pkg.version
     },
     retry: { maxRetries: 3, delay: 3000 }, // { maxRetries: number, delay: number in ms } or false to disable (default)
     fileName: filename => `${filename}.gz`, // Custom filename when saved

@@ -311,35 +311,29 @@ export class DownloaderHelper extends EventEmitter {
         if (headers.hasOwnProperty('range')) {
             delete headers['range'];
         }
-        const options = this.__getOptions('HEAD', this.url, headers);
         return new Promise((resolve, reject) => {
-            const request = this.__protocol.request(options, response => {
-                if (this.__isRequireRedirect(response)) {
-                    const redirectedURL = /^https?:\/\//.test(response.headers.location)
-                        ? response.headers.location
-                        : new URL(response.headers.location, this.url).href;
-                    const options = this.__getOptions('HEAD', redirectedURL, headers);
-                    const request = this.__protocol.request(options, response => {
-                        if (response.statusCode !== 200) {
-                            reject(new Error(`Response status was ${response.statusCode}`));
-                        }
-                        resolve({
-                            name: this.__getFileNameFromHeaders(response.headers, response),
-                            total: parseInt(response.headers['content-length']) || null
-                        });
-                    })
-                    request.end();
-                    return;
-                }
-                if (response.statusCode !== 200) {
-                    reject(new Error(`Response status was ${response.statusCode}`));
-                }
-                resolve({
-                    name: this.__getFileNameFromHeaders(response.headers, response),
-                    total: parseInt(response.headers['content-length']) || null
+            const getRequest = (url, options) => {
+                const req = this.__protocol.request(options, response => {
+                    if (this.__isRequireRedirect(response)) {
+                        const redirectedURL = /^https?:\/\//.test(response.headers.location)
+                            ? response.headers.location
+                            : new URL(response.headers.location, url).href;
+                        return getRequest(redirectedURL, this.__getOptions('HEAD', redirectedURL, headers));
+                    }
+                    if (response.statusCode !== 200) {
+                        return reject(new Error(`Response status was ${response.statusCode}`));
+                    }
+                    resolve({
+                        name: this.__getFileNameFromHeaders(response.headers, response),
+                        total: parseInt(response.headers['content-length']) || null
+                    });
                 });
-            });
-            request.end();
+                req.on('error', (err) => reject(err));
+                req.on('timeout', () => reject(new Error('timeout')));
+                req.on('uncaughtException', (err) => reject(err));
+                req.end();
+            };
+            getRequest(this.url, this.__getOptions('HEAD', this.url, headers));
         });
     }
 
