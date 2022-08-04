@@ -1,14 +1,14 @@
 {
   "name": "node-downloader-helper",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "A simple http file downloader for node.js",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
     "start": "npm run build && node ./example/index.js",
-    "lint": "./node_modules/.bin/eslint src",
-    "build": "./node_modules/.bin/babel --presets minify -d ./dist ./src",
-    "watch": "./node_modules/.bin/babel --watch ./src/index.js -o ./dist/index.js",
+    "lint": "npx eslint src",
+    "build": "npx babel --presets minify -d ./dist ./src",
+    "watch": "npx babel --watch ./src/index.js -o ./dist/index.js",
     "test": "npm run lint && jest"
   },
   "pre-commit": [

@@ -34,7 +34,7 @@ export class DownloaderHelper extends EventEmitter {
             return;
         }
 
-        this.url = this.requestURL = url;
+        this.url = this.requestURL = url.trim();
         this.state = DH_STATES.IDLE;
         this.__defaultOpts = {
             body: null,
@@ -318,6 +318,7 @@ export class DownloaderHelper extends EventEmitter {
                         const redirectedURL = /^https?:\/\//.test(response.headers.location)
                             ? response.headers.location
                             : new URL(response.headers.location, url).href;
+                        this.__initProtocol(redirectedURL);
                         return getRequest(redirectedURL, this.__getOptions('HEAD', redirectedURL, headers));
                     }
                     if (response.statusCode !== 200) {
@@ -665,14 +666,15 @@ export class DownloaderHelper extends EventEmitter {
             return Promise.reject(err);
         }
 
-        if (typeof this.__opts.retry !== 'object' ||
-            !this.__opts.retry.hasOwnProperty('maxRetries') ||
-            !this.__opts.retry.hasOwnProperty('delay')) {
+        if (typeof this.__opts.retry !== 'object') {
             return Promise.reject(new Error('wrong retry options'));
         }
 
+        const retryDelay = this.__opts.retry.delay || 0;
+        const maxRetries = this.__opts.retry.maxRetries || 999;
+
         // reached the maximum retries
-        if (this.__retryCount >= this.__opts.retry.maxRetries) {
+        if (this.__retryCount >= maxRetries) {
             return Promise.reject(err ? err : new Error('reached the maximum retries'));
         }
 
@@ -681,7 +683,7 @@ export class DownloaderHelper extends EventEmitter {
         this.emit('retry', this.__retryCount, this.__opts.retry, err);
 
         return new Promise((resolve) =>
-            setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.__start()), this.__opts.retry.delay)
+            setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.__start()), retryDelay)
         );
     }
 
@@ -966,7 +968,7 @@ export class DownloaderHelper extends EventEmitter {
             throw new Error('URL should be an string');
         }
 
-        if (!url) {
+        if (url.trim() === '') {
             throw new Error("URL couldn't be empty");
         }
 
@@ -974,7 +976,7 @@ export class DownloaderHelper extends EventEmitter {
             throw new Error('Destination Folder should be an string');
         }
 
-        if (!destFolder) {
+        if (destFolder.trim() === '') {
             throw new Error("Destination Folder couldn't be empty");
         }
 
