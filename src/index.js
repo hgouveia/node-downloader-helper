@@ -50,7 +50,9 @@ export class DownloaderHelper extends EventEmitter {
             progressThrottle: 1000,
             httpRequestOptions: {},
             httpsRequestOptions: {},
+            resumeOnIncomplete: true,
             resumeIfFileExists: false,
+            resumeOnIncompleteMaxRetry: 5,
         };
         this.__opts = Object.assign({}, this.__defaultOpts);
         this.__pipes = [];
@@ -58,6 +60,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__downloaded = 0;
         this.__progress = 0;
         this.__retryCount = 0;
+        this.__resumeRetryCount = 0;
         this.__states = DH_STATES;
         this.__promise = null;
         this.__request = null;
@@ -547,7 +550,8 @@ export class DownloaderHelper extends EventEmitter {
         return (this.state !== this.__states.PAUSED &&
             this.state !== this.__states.STOPPED &&
             this.state !== this.__states.RETRY &&
-            this.state !== this.__states.FAILED);
+            this.state !== this.__states.FAILED &&
+            this.state !== this.__states.RESUMED);
     }
 
 
@@ -580,13 +584,22 @@ export class DownloaderHelper extends EventEmitter {
                     return reject(_err);
                 }
                 if (this.__hasFinished()) {
+                    const isIncomplete = !this.__total ? false : this.__downloaded !== this.__total;
+
+                    if (isIncomplete && this.__isResumable && this.__opts.resumeOnIncomplete &&
+                        this.__resumeRetryCount <= this.__opts.resumeOnIncompleteMaxRetry) {
+                        this.__resumeRetryCount++;
+                        this.emit('warning', new Error('uncomplete download, retrying'));
+                        return this.resume();
+                    }
+
                     this.__setState(this.__states.FINISHED);
                     this.__pipes = [];
                     this.emit('end', {
                         fileName: this.__fileName,
                         filePath: this.__filePath,
                         totalSize: this.__total,
-                        incomplete: !this.__total ? false : this.__downloaded !== this.__total,
+                        incomplete: isIncomplete,
                         onDiskSize: this.__getFilesizeInBytes(this.__filePath),
                         downloadedSize: this.__downloaded,
                     });
@@ -730,6 +743,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__retryCount = 0;
         this.__downloaded = 0;
         this.__progress = 0;
+        this.__resumeRetryCount = 0;
         this.__statsEstimate = {
             time: 0,
             bytes: 0,
