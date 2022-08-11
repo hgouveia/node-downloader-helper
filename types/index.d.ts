@@ -67,7 +67,7 @@ interface ErrorStats {
   /** Error message */
   message: string;
   /** Http status response if available */
-  status?: string;
+  status?: number;
   /** Http body response if available */
   body?: string;
 }
