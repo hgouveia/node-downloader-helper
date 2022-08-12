@@ -133,6 +133,8 @@ interface DownloaderHelperOptions {
   retry?: boolean | RetryOptions;
   /* Request timeout in milliseconds (-1 use default), is the equivalent of 'httpRequestOptions: { timeout: value }' (also applied to https) */
   timeout?: number;
+  /* custom metadata for the user retrieve later */
+  metadata?: object | null;
   /** it will resume if a file already exists and is not completed, you might want to set removeOnStop and removeOnFail to false. If you used pipe for compression it will produce corrupted files */
   resumeIfFileExists?: boolean;
   /** If the server does not return the "accept-ranges" header, can be force if it does support it */
@@ -149,6 +151,10 @@ interface DownloaderHelperOptions {
   httpRequestOptions?: object;
   /** Override the https request options, ex: to add SSL Certs */
   httpsRequestOptions?: object;
+  /** Resume download if the file is incomplete */
+  resumeOnIncomplete?: boolean;
+  /** Max retry when resumeOnIncomplete is true */
+  resumeOnIncompleteMaxRetry?: number;
 }
 export class DownloaderHelper extends EventEmitter {
   /**
@@ -236,6 +242,9 @@ export class DownloaderHelper extends EventEmitter {
    */
   updateOptions(options?: object): void;
 
+  getOptions(): object;
+  getMetadata(): object | null;
+
   /**
    * Current download progress stats
    *
@@ -260,12 +269,12 @@ export class DownloaderHelper extends EventEmitter {
   on<E extends keyof DownloadEvents>(event: E, callback: DownloadEvents[E]): any;
 
   /**
- * Get the state required to resume the download after restart. This state
- * can be passed back to `resumeFromFile()` to resume a download
- * 
- * @returns {IResumeState} Returns the state required to resume
- * @memberof DownloaderHelper
- */
+  * Get the state required to resume the download after restart. This state
+  * can be passed back to `resumeFromFile()` to resume a download
+  *
+  * @returns {IResumeState} Returns the state required to resume
+  * @memberof DownloaderHelper
+  */
   getResumeState(): IResumeState;
 
   /**

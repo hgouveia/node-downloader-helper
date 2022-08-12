@@ -2,7 +2,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/node-downloader-helper.svg?style=flat-square "npm version")](https://www.npmjs.com/package/node-downloader-helper)
 ![npm](https://img.shields.io/npm/dw/node-downloader-helper?style=flat-square "npm download")
-![GitHub Actions Build](https://github.com/github/docs/actions/workflows/test.yml/badge.svg "GitHub Actions Build")
+![GitHub Actions Build](https://github.com/hgouveia/node-downloader-helper/actions/workflows/test.yml/badge.svg "GitHub Actions Build")
 [![Build Status](https://img.shields.io/travis/hgouveia/node-downloader-helper/master.svg?style=flat-square "Build Status")](https://travis-ci.org/hgouveia/node-downloader-helper)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/hgouveia/node-downloader-helper/master.svg?label=windows&style=flat-square "Windows Build Status")](https://ci.appveyor.com/project/hgouveia/node-downloader-helper) [![Join the chat at https://gitter.im/node-downloader-helper/Lobby](https://badges.gitter.im/node-downloader-helper/Lobby.svg)](https://gitter.im/node-downloader-helper/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fhgouveia%2Fnode-downloader-helper.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fhgouveia%2Fnode-downloader-helper?ref=badge_shield)
@@ -65,6 +65,7 @@ these are the default values
     method: 'GET', // Request Method Verb
     headers: {},  // Custom HTTP Header ex: Authorization, User-Agent
     timeout: -1, // Request timeout in milliseconds (-1 use default), is the equivalent of 'httpRequestOptions: { timeout: value }' (also applied to https)
+    metadata: {}, // custom metadata for the user retrieve later (default:null)
     resumeOnIncomplete: true, // Resume download if the file is incomplete (set false if using any pipe that modifies the file)
     resumeOnIncompleteMaxRetry: 5, // Max retry when resumeOnIncomplete is true
     resumeIfFileExists: false, // it will resume if a file already exists and is not completed, you might want to set removeOnStop and removeOnFail to false. If you used pipe for compression it will produce corrupted files

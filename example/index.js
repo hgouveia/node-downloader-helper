@@ -31,6 +31,7 @@ const options = {
     object: { skip: skip if already exists, skipSmaller: skip if smaller }
     boolean: true to override file, false to append '(number)' to new file name
     */
+    metadata: { name: 'download-1' },
     override: { skip: true, skipSmaller: true },
     forceResume: false, // If the server does not return the "accept-ranges" header but it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
@@ -86,6 +87,6 @@ dl
         }
     });
 
-console.log('Downloading: ', url);
+console.log(`Downloading [${dl.getMetadata().name}]: ${url}`);
 dl.pipe(zlib.createGzip()); // Adding example of pipe to compress the file while downloading
 dl.start().catch(err => { /* already listening on 'error' event but catch can be used too */ });

@@ -43,6 +43,7 @@ export class DownloaderHelper extends EventEmitter {
             headers: {},
             fileName: '',
             timeout: -1, // -1 use default
+            metadata: null,
             override: false, // { skip: false, skipSmaller: false }
             forceResume: false,
             removeOnStop: true,
@@ -262,7 +263,6 @@ export class DownloaderHelper extends EventEmitter {
         return this.__isResumable;
     }
 
-
     /**
      * Updates the options, can be use on pause/resume events
      *
@@ -285,6 +285,22 @@ export class DownloaderHelper extends EventEmitter {
 
         this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
+    }
+
+    /**
+    * 
+    * @returns {Object}
+    */
+    getOptions() {
+        return this.__opts;
+    }
+
+    /**
+    * 
+    * @returns {Object| null}
+    */
+    getMetadata() {
+        return this.__opts.metadata;
     }
 
     /**
