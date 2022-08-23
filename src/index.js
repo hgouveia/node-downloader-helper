@@ -66,6 +66,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__promise = null;
         this.__request = null;
         this.__response = null;
+        this.__isAborted = false;
         this.__isResumed = false;
         this.__isResumable = false;
         this.__isRedirected = false;
@@ -413,6 +414,7 @@ export class DownloaderHelper extends EventEmitter {
 
         // Start the Download
         this.__response = null;
+        this.__isAborted = false;
         this.__request = this.__downloadRequest(this.__promise.resolve, this.__promise.reject);
 
         // Error Handling
@@ -563,11 +565,13 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __hasFinished() {
-        return (this.state !== this.__states.PAUSED &&
-            this.state !== this.__states.STOPPED &&
-            this.state !== this.__states.RETRY &&
-            this.state !== this.__states.FAILED &&
-            this.state !== this.__states.RESUMED);
+        return !this.__isAborted && [
+            this.__states.PAUSED,
+            this.__states.STOPPED,
+            this.__states.RETRY,
+            this.__states.FAILED,
+            this.__states.RESUMED
+        ].indexOf(this.state) === -1;
     }
 
 
@@ -1123,6 +1127,8 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __requestAbort() {
+        this.__isAborted = true;
+
         if (this.__response) {
             this.__response.destroy();
         }
