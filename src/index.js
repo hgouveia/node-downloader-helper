@@ -36,6 +36,7 @@ export class DownloaderHelper extends EventEmitter {
 
         this.url = this.requestURL = url.trim();
         this.state = DH_STATES.IDLE;
+        this.__agent = null;
         this.__defaultOpts = {
             body: null,
             retry: false, // { maxRetries: 3, delay: 3000 }
@@ -284,8 +285,8 @@ export class DownloaderHelper extends EventEmitter {
             this.__opts.progressThrottle = this.__defaultOpts.progressThrottle;
         }
 
-        this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
+        this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
     }
 
     /**
@@ -958,6 +959,7 @@ export class DownloaderHelper extends EventEmitter {
             port: urlParse.port,
             path: urlParse.pathname + urlParse.search,
             method,
+            agent: this.__agent,
         };
 
         if (headers) {
@@ -1044,9 +1046,11 @@ export class DownloaderHelper extends EventEmitter {
 
         if (url.indexOf('https://') > -1) {
             this.__protocol = https;
+            this.__agent = new https.Agent({ keepAlive: false });
             this.__options = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
         } else {
             this.__protocol = http;
+            this.__agent = new http.Agent({ keepAlive: false });
             this.__options = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
         }
 
