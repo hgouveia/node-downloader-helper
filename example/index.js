@@ -72,6 +72,7 @@ dl
     })
     .on('stateChanged', state => console.log('State: ', state))
     .on('renamed', filePaths => console.log('File Renamed to: ', filePaths.fileName))
+    .on('redirected', (newUrl, oldUrl) => console.log(`Redirect from '${newUrl}' => '${oldUrl}'`))
     .on('progress', stats => {
         const progress = stats.progress.toFixed(1);
         const speed = byteHelper(stats.speed);

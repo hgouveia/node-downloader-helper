@@ -313,12 +313,12 @@ describe('DownloaderHelper', function () {
 
         });
 
-        describe('__getOptions', () => {
+        describe('__getReqOptions', () => {
             it("it should return the correct parsed options", function () {
                 const dl = new DownloaderHelper('https://www.google.com/search?q=javascript', __dirname, {
                     headers: { 'user-agent': 'my-user-agent' }
                 });
-                const options = dl.__getOptions(dl.__opts.method, dl.url, dl.__opts.headers);
+                const options = dl.__getReqOptions(dl.__opts.method, dl.url, dl.__opts.headers);
                 expect(options.protocol).to.be.equal('https:');
                 expect(options.host).to.be.equal('www.google.com');
                 expect(options.port).to.be.equal('');
@@ -329,6 +329,43 @@ describe('DownloaderHelper', function () {
 
         });
     })
+
+    describe('__initProtocol', function () {
+        it("protocol should be http", function () {
+            const dl = new DownloaderHelper(downloadURL.replace('https:', 'http:'), __dirname);
+            expect(dl.__protocol.STATUS_CODES).to.be.not.undefined;
+        });
+
+        it("protocol should be https", function () {
+            // NOTE: STATUS_CODES property seems to be available only in http module
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            expect(dl.__protocol.STATUS_CODES).to.be.undefined;
+        });
+
+        it("protocol should has https Agent", function () {
+            const dl = new DownloaderHelper(downloadURL, __dirname);
+            expect(dl.__reqOptions.agent).to.be.not.undefined;
+        });
+
+        it("protocol should has http Agent", function () {
+            const dl = new DownloaderHelper(downloadURL.replace('https:', 'http:'), __dirname);
+            expect(dl.__reqOptions.agent).to.be.not.undefined;
+        });
+
+        it("protocol should has custom http Agent", function () {
+            const dl = new DownloaderHelper(downloadURL, __dirname, {
+                httpsRequestOptions: { agent: 'myCustomAgent' }
+            });
+            expect(dl.__reqOptions.agent).to.be.equal('myCustomAgent');
+        });
+
+        it("protocol should has custom https Agent", function () {
+            const dl = new DownloaderHelper(downloadURL.replace('https:', 'http:'), __dirname, {
+                httpRequestOptions: { agent: 'myCustomAgent' }
+            });
+            expect(dl.__reqOptions.agent).to.be.equal('myCustomAgent');
+        });
+    });
 
     describe('download', function () {
         it("if the content-length is not present when the download starts, it should return null as totalSize", function (done) {

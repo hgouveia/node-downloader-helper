@@ -3,7 +3,6 @@
 [![NPM Version](https://img.shields.io/npm/v/node-downloader-helper.svg?style=flat-square "npm version")](https://www.npmjs.com/package/node-downloader-helper)
 ![npm](https://img.shields.io/npm/dw/node-downloader-helper?style=flat-square "npm download")
 ![GitHub Actions Build](https://github.com/hgouveia/node-downloader-helper/actions/workflows/test.yml/badge.svg "GitHub Actions Build")
-[![Build Status](https://img.shields.io/travis/hgouveia/node-downloader-helper/master.svg?style=flat-square "Build Status")](https://travis-ci.org/hgouveia/node-downloader-helper)
 [![Windows Build Status](https://img.shields.io/appveyor/ci/hgouveia/node-downloader-helper/master.svg?label=windows&style=flat-square "Windows Build Status")](https://ci.appveyor.com/project/hgouveia/node-downloader-helper) [![Join the chat at https://gitter.im/node-downloader-helper/Lobby](https://badges.gitter.im/node-downloader-helper/Lobby.svg)](https://gitter.im/node-downloader-helper/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fhgouveia%2Fnode-downloader-helper.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fhgouveia%2Fnode-downloader-helper?ref=badge_shield)
 
@@ -120,7 +119,7 @@ for `httpsRequestOptions` the available options are detailed in here https://nod
 | stop   	| stop the downloading and remove the file                                     	|
 | pipe   	| `readable.pipe(stream.Readable, options) : stream.Readable`                 	|
 | unpipe   	| `(stream)`  if not stream is not specified, then all pipes are detached.      |
-| updateOptions   	| `(options)` updates the options, can be use on pause/resume events    |
+| updateOptions   	| `(options, url)` updates the options, can be use on pause/resume events    |
 | getStats  | returns `stats` from the current download, these are the same `stats` sent via progress event  |
 | getTotalSize 	| gets the total file size from the server                                  |
 | getDownloadPath   | gets the full path where the file will be downloaded (available after the start phase) |
@@ -160,9 +159,10 @@ dl.resumeFromFile(prevState.filePath, prevState).catch(err => console.error(err)
 | error        	| Emitted when there is any error `callback(error)`              	                    |
 | timeout      	| Emitted when the underlying socket times out from inactivity.                         |
 | pause        	| Emitted when the .pause method is called                      	                    |
-| resume       	| Emitted when the .resume method is called `callback(isResume)`   	                    |
 | stop         	| Emitted when the .stop method is called                       	                    |
+| resume       	| Emitted when the .resume method is called `callback(isResume)`   	                    |
 | renamed      	| Emitted when '(number)' is appended to the end of file, this requires `override:false` opt, `callback(filePaths)` |
+| redirected   	| Emitted when an url redirect happened `callback(newUrl, oldUrl)` NOTE: this will be triggered during getTotalSize() as well |
 | stateChanged 	| Emitted when the state changes `callback(state)`               	                    |
 | warning   	| Emitted when an error occurs that was not thrown intentionally `callback(err: Error)` |
 
