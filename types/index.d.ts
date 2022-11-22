@@ -98,6 +98,8 @@ interface DownloadEvents {
   stop: () => any;
   /** Emitted when '(number)' is appended to the end of file, this requires override:false opt, callback(filePaths) */
   renamed: (stats: FileRenamedStats) => any;
+  /** Emitted when an url redirect happened `callback(newUrl, oldUrl)` NOTE: this will be triggered during getTotalSize() as well */
+  redirected: (newUrl: string, oldUrl: string) => any;
   /** Emitted when the state changes */
   stateChanged: (state: DH_STATES) => any;
   /** Emitted when an error occurs that was not thrown intentionally  */
@@ -238,9 +240,10 @@ export class DownloaderHelper extends EventEmitter {
    * Updates the options, can be use on pause/resume events
    *
    * @param {Object} [options={}]
+   * @param {String} [url='']
    * @memberof DownloaderHelper
    */
-  updateOptions(options?: object): void;
+  updateOptions(options?: object, url?: string): void;
 
   getOptions(): object;
   getMetadata(): object | null;

@@ -157,7 +157,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__setState(this.__states.RESUMED);
         if (this.__isResumable) {
             this.__isResumed = true;
-            this.__options['headers']['range'] = `bytes=${this.__downloaded}-`;
+            this.__reqOptions['headers']['range'] = `bytes=${this.__downloaded}-`;
         }
         this.emit('resume', this.__isResumed);
         return this.__start();
@@ -268,9 +268,10 @@ export class DownloaderHelper extends EventEmitter {
      * Updates the options, can be use on pause/resume events
      *
      * @param {Object} [options={}]
+     * @param {String} [url='']
      * @memberof DownloaderHelper
      */
-    updateOptions(options) {
+    updateOptions(options, url = '') {
         this.__opts = Object.assign({}, this.__opts, options);
         this.__headers = this.__opts.headers;
 
@@ -284,7 +285,8 @@ export class DownloaderHelper extends EventEmitter {
             this.__opts.progressThrottle = this.__defaultOpts.progressThrottle;
         }
 
-        this.__options = this.__getOptions(this.__opts.method, this.url, this.__opts.headers);
+        this.url = url || this.url;
+        this.__reqOptions = this.__getReqOptions(this.__opts.method, this.url, this.__opts.headers);
         this.__initProtocol(this.url);
     }
 
@@ -327,19 +329,24 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     getTotalSize() {
-        const headers = Object.assign({}, this.__headers);
-        if (headers.hasOwnProperty('range')) {
-            delete headers['range'];
-        }
         return new Promise((resolve, reject) => {
+            const getReqOptions = (url) => {
+                this.__initProtocol(url);
+                const headers = Object.assign({}, this.__headers);
+                if (headers.hasOwnProperty('range')) {
+                    delete headers['range'];
+                }
+                const reqOptions = this.__getReqOptions('HEAD', url, headers);
+                return Object.assign({}, this.__reqOptions, reqOptions);
+            };
             const getRequest = (url, options) => {
                 const req = this.__protocol.request(options, response => {
                     if (this.__isRequireRedirect(response)) {
                         const redirectedURL = /^https?:\/\//.test(response.headers.location)
                             ? response.headers.location
                             : new URL(response.headers.location, url).href;
-                        this.__initProtocol(redirectedURL);
-                        return getRequest(redirectedURL, this.__getOptions('HEAD', redirectedURL, headers));
+                        this.emit('redirected', redirectedURL, url);
+                        return getRequest(redirectedURL, getReqOptions(redirectedURL));
                     }
                     if (response.statusCode !== 200) {
                         return reject(new Error(`Response status was ${response.statusCode}`));
@@ -354,7 +361,7 @@ export class DownloaderHelper extends EventEmitter {
                 req.on('uncaughtException', (err) => reject(err));
                 req.end();
             };
-            getRequest(this.url, this.__getOptions('HEAD', this.url, headers));
+            getRequest(this.url, getReqOptions(this.url));
         });
     }
 
@@ -393,7 +400,7 @@ export class DownloaderHelper extends EventEmitter {
                 this.__total = state.total || total;
                 this.__fileName = state.fileName || name;
                 this.__downloaded = state.downloaded || this.__getFilesizeInBytes(this.__filePath);
-                this.__options['headers']['range'] = `bytes=${this.__downloaded}-`;
+                this.__reqOptions['headers']['range'] = `bytes=${this.__downloaded}-`;
                 this.__isResumed = true;
                 this.__isResumable = true;
                 this.__setState(this.__states.RESUMED);
@@ -410,6 +417,7 @@ export class DownloaderHelper extends EventEmitter {
             this.state !== this.__states.RESUMED) {
             this.emit('start');
             this.__setState(this.__states.STARTED);
+            this.__initProtocol(this.url);
         }
 
         // Start the Download
@@ -452,7 +460,7 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __downloadRequest(resolve, reject) {
-        return this.__protocol.request(this.__options, response => {
+        return this.__protocol.request(this.__reqOptions, response => {
             this.__response = response;
 
             //Stats
@@ -468,6 +476,7 @@ export class DownloaderHelper extends EventEmitter {
                     : new URL(response.headers.location, this.url).href;
                 this.__isRedirected = true;
                 this.__initProtocol(redirectedURL);
+                this.emit('redirected', redirectedURL, this.url);
                 return this.__start();
             }
 
@@ -950,7 +959,7 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {Object}
      * @memberof DownloaderHelper
      */
-    __getOptions(method, url, headers = {}) {
+    __getReqOptions(method, url, headers = {}) {
         const urlParse = new URL(url);
         const options = {
             protocol: urlParse.protocol,
@@ -1039,15 +1048,17 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __initProtocol(url) {
-        const defaultOpts = this.__getOptions(this.__opts.method, url, this.__headers);
+        const defaultOpts = this.__getReqOptions(this.__opts.method, url, this.__headers);
         this.requestURL = url;
 
         if (url.indexOf('https://') > -1) {
             this.__protocol = https;
-            this.__options = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
+            defaultOpts.agent = new https.Agent({ keepAlive: false });
+            this.__reqOptions = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
         } else {
             this.__protocol = http;
-            this.__options = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
+            defaultOpts.agent = new http.Agent({ keepAlive: false });
+            this.__reqOptions = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
         }
 
     }
