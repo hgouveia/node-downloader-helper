@@ -1,7 +1,7 @@
 {
   "name": "node-downloader-helper",
-  "version": "2.1.5",
-  "description": "A simple http file downloader for node.js",
+  "version": "2.1.6",
+  "description": "A simple http/s file downloader for node.js",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
   "scripts": {
@@ -15,9 +15,11 @@
     "test"
   ],
   "keywords": [
+    "nwjs",
     "node",
     "nodejs",
     "node.js",
+    "electron",
     "download",
     "resumable",
     "resume",
