@@ -423,6 +423,10 @@ export class DownloaderHelper extends EventEmitter {
         // Start the Download
         this.__response = null;
         this.__isAborted = false;
+
+        if (this.__request && !this.__request.destroyed) {
+            this.__request.destroy()
+        }
         this.__request = this.__downloadRequest(this.__promise.resolve, this.__promise.reject);
 
         // Error Handling
