@@ -61,6 +61,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__downloaded = 0;
         this.__progress = 0;
         this.__retryCount = 0;
+        this.__retryTimeout = null;
         this.__resumeRetryCount = 0;
         this.__states = DH_STATES;
         this.__promise = null;
@@ -427,6 +428,12 @@ export class DownloaderHelper extends EventEmitter {
         if (this.__request && !this.__request.destroyed) {
             this.__request.destroy()
         }
+
+        if (this.__retryTimeout) {
+            clearTimeout(this.__retryTimeout);
+            this.__retryTimeout = null;
+        }
+
         this.__request = this.__downloadRequest(this.__promise.resolve, this.__promise.reject);
 
         // Error Handling
@@ -727,9 +734,12 @@ export class DownloaderHelper extends EventEmitter {
         this.__retryCount++;
         this.__setState(this.__states.RETRY);
         this.emit('retry', this.__retryCount, this.__opts.retry, err);
-
+        if (this.__retryTimeout) {
+            clearTimeout(this.__retryTimeout);
+            this.__retryTimeout = null;
+        }
         return new Promise((resolve) =>
-            setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.__start()), retryDelay)
+            this.__retryTimeout = setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.__start()), retryDelay)
         );
     }
 
@@ -1143,6 +1153,10 @@ export class DownloaderHelper extends EventEmitter {
      */
     __requestAbort() {
         this.__isAborted = true;
+        if (this.__retryTimeout) {
+            clearTimeout(this.__retryTimeout);
+            this.__retryTimeout = null;
+        }
 
         if (this.__response) {
             this.__response.destroy();
