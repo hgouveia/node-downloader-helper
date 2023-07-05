@@ -743,9 +743,9 @@ export class DownloaderHelper extends EventEmitter {
     
        return this.__closeFileStream().then(() => 
            new Promise((resolve) =>
-               this.__retryTimeout = setTimeout(() => resolve(this._downloaded > 0 ? 
+               this.__retryTimeout = setTimeout(() => resolve(this.__downloaded > 0 ? 
                    this.resume() : 
-                   this._start()), 
+                   this.__start()), 
                retryDelay)
            )
        );
