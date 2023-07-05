@@ -126,8 +126,7 @@ export class DownloaderHelper extends EventEmitter {
             return Promise.resolve(true);
         }
 
-        this.__requestAbort();
-
+    
         if (this.__response) {
             this.__response.unpipe();
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
@@ -136,6 +135,8 @@ export class DownloaderHelper extends EventEmitter {
         if (this.__fileStream) {
             this.__fileStream.removeAllListeners();
         }
+
+        this.__requestAbort();
 
         return this.__closeFileStream().then(() => {
             this.__setState(this.__states.PAUSED);
@@ -689,7 +690,6 @@ export class DownloaderHelper extends EventEmitter {
                 this.state === this.__states.FAILED) {
                 return;
             }
-
             if (!this.__opts.retry) {
                 return this.__removeFile().finally(() => {
                     this.__setState(this.__states.FAILED);
@@ -715,32 +715,40 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __retry(err = null) {
-        if (!this.__opts.retry) {
-            return Promise.reject(err);
+        if (!this.__opts.retry || typeof this.__opts.retry !== 'object') {
+            return Promise.reject(err || new Error('wrong retry options'));
         }
-
-        if (typeof this.__opts.retry !== 'object') {
-            return Promise.reject(new Error('wrong retry options'));
-        }
-
-        const retryDelay = this.__opts.retry.delay || 0;
-        const maxRetries = this.__opts.retry.maxRetries || 999;
-
+    
+        const { delay: retryDelay = 0, maxRetries = 999 } = this.__opts.retry;
+    
         // reached the maximum retries
         if (this.__retryCount >= maxRetries) {
-            return Promise.reject(err ? err : new Error('reached the maximum retries'));
+            return Promise.reject(err || new Error('reached the maximum retries'));
         }
-
+    
         this.__retryCount++;
         this.__setState(this.__states.RETRY);
         this.emit('retry', this.__retryCount, this.__opts.retry, err);
-        if (this.__retryTimeout) {
-            clearTimeout(this.__retryTimeout);
-            this.__retryTimeout = null;
+    
+        if (this.__response) {
+            this.__response.unpipe();
+            this.__pipes.forEach(pipe => pipe.stream.unpipe());
         }
-        return new Promise((resolve) =>
-            this.__retryTimeout = setTimeout(() => resolve(this.__downloaded > 0 ? this.resume() : this.__start()), retryDelay)
-        );
+    
+        if (this.__fileStream) {
+            this.__fileStream.removeAllListeners();
+        }
+    
+        this.__requestAbort();
+    
+       return this.__closeFileStream().then(() => 
+           new Promise((resolve) =>
+               this.__retryTimeout = setTimeout(() => resolve(this._downloaded > 0 ? 
+                   this.resume() : 
+                   this._start()), 
+               retryDelay)
+           )
+       );
     }
 
     /**
