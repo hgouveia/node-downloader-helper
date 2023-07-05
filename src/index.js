@@ -434,7 +434,7 @@ export class DownloaderHelper extends EventEmitter {
             clearTimeout(this.__retryTimeout);
             this.__retryTimeout = null;
         }
-        
+
         this.__request = this.__downloadRequest(this.__promise.resolve, this.__promise.reject);
 
         // Error Handling
