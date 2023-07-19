@@ -126,7 +126,6 @@ export class DownloaderHelper extends EventEmitter {
             return Promise.resolve(true);
         }
 
-    
         if (this.__response) {
             this.__response.unpipe();
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
@@ -718,37 +717,39 @@ export class DownloaderHelper extends EventEmitter {
         if (!this.__opts.retry || typeof this.__opts.retry !== 'object') {
             return Promise.reject(err || new Error('wrong retry options'));
         }
-    
+
         const { delay: retryDelay = 0, maxRetries = 999 } = this.__opts.retry;
-    
+
         // reached the maximum retries
         if (this.__retryCount >= maxRetries) {
             return Promise.reject(err || new Error('reached the maximum retries'));
         }
-    
+
         this.__retryCount++;
         this.__setState(this.__states.RETRY);
         this.emit('retry', this.__retryCount, this.__opts.retry, err);
-    
+
         if (this.__response) {
             this.__response.unpipe();
             this.__pipes.forEach(pipe => pipe.stream.unpipe());
         }
-    
+
         if (this.__fileStream) {
             this.__fileStream.removeAllListeners();
         }
-    
+
         this.__requestAbort();
-    
-       return this.__closeFileStream().then(() => 
-           new Promise((resolve) =>
-               this.__retryTimeout = setTimeout(() => resolve(this.__downloaded > 0 ? 
-                   this.resume() : 
-                   this.__start()), 
-               retryDelay)
-           )
-       );
+
+        return this.__closeFileStream().then(() =>
+            new Promise((resolve) =>
+                this.__retryTimeout = setTimeout(
+                    () => resolve(this.__downloaded > 0 ?
+                        this.resume() :
+                        this.__start()),
+                    retryDelay
+                )
+            )
+        );
     }
 
     /**
