@@ -151,8 +151,13 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     resume() {
+        // if the promise is null, the download was started using resume instead of start
+        if (!this.__promise) {
+            return this.start();
+        }
+
         if (this.state === this.__states.STOPPED) {
-            return;
+            return Promise.resolve(false);
         }
 
         this.__setState(this.__states.RESUMED);
