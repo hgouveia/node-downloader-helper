@@ -19,12 +19,14 @@ function getRequestFn(requestOptions) {
             statusCode: requestOptions.statusCode || 200,
             headers: requestOptions.headers || {},
             unpipe: jest.fn(),
+            destroy: jest.fn(),
         });
         return {
             on: jest.fn(),
             end: jest.fn(),
             abort: jest.fn(),
             write: jest.fn(),
+            destroy: jest.fn(),
         };
     };
 }
@@ -398,5 +400,27 @@ describe('DownloaderHelper', function () {
                 done();
             });
         });
+
+        it("performs retry when the request fails", function (done) {
+            fs.createWriteStream.mockReturnValue({ on: jest.fn() });
+            https.request.mockImplementationOnce(getRequestFn({
+                statusCode: 502,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            https.request.mockImplementationOnce(getRequestFn({
+                statusCode: 200,
+                headers: {
+                    'content-type': 'application/zip',
+                }
+            }));
+            const dl = new DownloaderHelper(downloadURL, __dirname, { retry: { maxRetries: 2, delay: 0 } });
+            dl.on('download',
+                () => {
+                    done();
+                });
+            dl.start();
+        })
     });
 });

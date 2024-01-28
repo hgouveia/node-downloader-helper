@@ -501,9 +501,7 @@ export class DownloaderHelper extends EventEmitter {
                 const err = new Error(`Response status was ${response.statusCode}`);
                 err.status = response.statusCode || 0;
                 err.body = response.body || '';
-                this.__setState(this.__states.FAILED);
-                this.emit('error', err);
-                return reject(err);
+                return this.__onError(resolve, reject)(err);
             }
 
             if (this.__opts.forceResume) {
