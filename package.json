@@ -1,6 +1,6 @@
 {
   "name": "@hgouveia/node-downloader-helper",
-  "version": "2.1.9",
+  "version": "2.1.10",
   "description": "A simple http/s file downloader for node.js",
   "main": "./dist/index.js",
   "types": "./types/index.d.ts",
@@ -28,7 +28,7 @@
   "author": "Jose De Gouveia",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hgouveia/node-downloader-helper"
+    "url": "git+https://github.com/hgouveia/node-downloader-helper.git"
   },
   "bugs": {
     "url": "https://github.com/hgouveia/node-downloader-helper/issues"

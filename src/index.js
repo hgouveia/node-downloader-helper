@@ -345,7 +345,44 @@ export class DownloaderHelper extends EventEmitter {
                 const reqOptions = this.__getReqOptions('HEAD', url, headers);
                 return Object.assign({}, this.__reqOptions, reqOptions);
             };
+
+            let retryCount = 0;
+            let retryTimeout = null;
+
+            const retry = (err, url) => {
+                if (!this.__opts.retry || typeof this.__opts.retry !== 'object') {
+                    return Promise.reject(err || new Error('wrong retry options'));
+                }
+
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
+
+                const { delay: retryDelay = 0, maxRetries = 999 } = this.__opts.retry;
+
+                if (retryCount >= maxRetries) {
+                    return Promise.reject(err || new Error('reached the maximum retries'));
+                }
+
+                retryCount++;
+                this.__setState(this.__states.RETRY);
+                this.emit('retry', retryCount, this.__opts.retry, err);
+
+                return new Promise((resolveRetry) => {
+                    retryTimeout = setTimeout(() => {
+                        this.__setState(this.__states.IDLE);
+                        getRequest(url, getReqOptions(url));
+                        resolveRetry();
+                    }, retryDelay);
+                });
+            };
+
             const getRequest = (url, options) => {
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
                 const req = this.__protocol.request(options, response => {
                     if (this.__isRequireRedirect(response)) {
                         const redirectedURL = /^https?:\/\//.test(response.headers.location)
@@ -354,17 +391,42 @@ export class DownloaderHelper extends EventEmitter {
                         this.emit('redirected', redirectedURL, url);
                         return getRequest(redirectedURL, getReqOptions(redirectedURL));
                     }
-                    if (response.statusCode !== 200) {
-                        return reject(new Error(`Response status was ${response.statusCode}`));
+                    if (response.statusCode < 200 || response.statusCode >= 400) {
+                        const err = new Error(`Response status was ${response.statusCode}`);
+                        // 5xx server errors
+                        if (this.__opts.retry &&
+                            response.statusCode >= 500 && response.statusCode < 600) {
+                            return retry(err, url).catch(reject);
+                        }
+                        return reject(err);
                     }
                     resolve({
                         name: this.__getFileNameFromHeaders(response.headers, response),
                         total: parseInt(response.headers['content-length']) || null
                     });
                 });
-                req.on('error', (err) => reject(err));
-                req.on('timeout', () => reject(new Error('timeout')));
-                req.on('uncaughtException', (err) => reject(err));
+
+                req.on('error', (err) => {
+                    if (this.__opts.retry) {
+                        return retry(err, url).catch(reject);
+                    }
+                    reject(err);
+                });
+
+                req.on('timeout', () => {
+                    if (this.__opts.retry) {
+                        return retry(new Error('timeout'), url).catch(reject);
+                    }
+                    reject(new Error('timeout'));
+                });
+
+                req.on('uncaughtException', (err) => {
+                    if (this.__opts.retry) {
+                        return retry(err, url).catch(reject);
+                    }
+                    reject(err);
+                });
+
                 req.end();
             };
             getRequest(this.url, getReqOptions(this.url));
@@ -497,10 +559,15 @@ export class DownloaderHelper extends EventEmitter {
             }
 
             // check if response wans't a success
-            if (response.statusCode !== 200 && response.statusCode !== 206) {
+            if (response.statusCode < 200 || response.statusCode >= 400) {
                 const err = new Error(`Response status was ${response.statusCode}`);
                 err.status = response.statusCode || 0;
                 err.body = response.body || '';
+
+                // 5xx server errors
+                if (response.statusCode >= 500 && response.statusCode < 600) {
+                    return this.__onError(resolve, reject)(err);
+                }
                 this.__setState(this.__states.FAILED);
                 this.emit('error', err);
                 return reject(err);

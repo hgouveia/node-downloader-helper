@@ -7,27 +7,34 @@ on:
   release:
     types: [created]
 
+# https://docs.npmjs.com/trusted-publishers
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
-      - run: npm install --no-optional
+          node-version: 24
+      - run: npm install --omit=optional
       - run: npm test
 
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 18
-          registry-url: https://registry.npmjs.org/
-      - run: npm install --no-optional
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Update npm
+        run: npm install -g npm@latest
+      - run: npm install --omit=optional
       - run: npm run build
       - run: npm publish
         env:
