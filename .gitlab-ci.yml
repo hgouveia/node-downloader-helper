@@ -1,13 +1,31 @@
-image: node:18
+image: node:24
 
 cache:
   paths:
   - node_modules/
 
-before_script:
-  - npm install --no-optional
+stages:
+  - build
+  - publish
 
 build:
+  stage: build
+  before_script:
+   - npm install -g npm@latest
+   - npm install --omit=optional
   script:
     - npm run build
     - npm test
+# https://docs.npmjs.com/trusted-publishers
+publish:
+  stage: publish
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+  script:
+    - npm install -g npm@latest
+    - npm ci
+    - npm run build --if-present
+    - npm publish
+  only:
+    - tags
