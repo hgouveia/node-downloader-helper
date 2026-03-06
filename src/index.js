@@ -48,6 +48,7 @@ export class DownloaderHelper extends EventEmitter {
             forceResume: false,
             removeOnStop: true,
             removeOnFail: true,
+            maxRedirects: 10,
             progressThrottle: 1000,
             httpRequestOptions: {},
             httpsRequestOptions: {},
@@ -63,6 +64,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__retryCount = 0;
         this.__retryTimeout = null;
         this.__resumeRetryCount = 0;
+        this.__redirectCount = 0;
         this.__states = DH_STATES;
         this.__promise = null;
         this.__request = null;
@@ -80,6 +82,8 @@ export class DownloaderHelper extends EventEmitter {
         };
         this.__fileName = '';
         this.__filePath = '';
+        this.__defaultHttpAgent = new http.Agent({ keepAlive: false });
+        this.__defaultHttpsAgent = new https.Agent({ keepAlive: false });
         this.updateOptions(options);
     }
 
@@ -94,6 +98,7 @@ export class DownloaderHelper extends EventEmitter {
             this.__promise = { resolve, reject };
             this.__start();
         });
+        this.__redirectCount = 0;
 
         // this will determine the file path from the headers
         // and attempt to get the file size and resume if possible
@@ -151,6 +156,8 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     resume() {
+        this.__redirectCount = 0;
+
         // if the promise is null, the download was started using resume instead of start
         if (!this.__promise) {
             return this.start();
@@ -348,6 +355,7 @@ export class DownloaderHelper extends EventEmitter {
 
             let retryCount = 0;
             let retryTimeout = null;
+            let redirectCount = 0;
 
             const retry = (err, url) => {
                 if (!this.__opts.retry || typeof this.__opts.retry !== 'object') {
@@ -385,6 +393,14 @@ export class DownloaderHelper extends EventEmitter {
                 }
                 const req = this.__protocol.request(options, response => {
                     if (this.__isRequireRedirect(response)) {
+                        redirectCount++;
+                        if (redirectCount > this.__opts.maxRedirects) {
+                            const err = new Error('Too many redirects');
+                            this.__setState(this.__states.FAILED);
+                            this.emit('error', err);
+                            return reject(err);
+                        }
+
                         const redirectedURL = /^https?:\/\//.test(response.headers.location)
                             ? response.headers.location
                             : new URL(response.headers.location, url).href;
@@ -547,8 +563,24 @@ export class DownloaderHelper extends EventEmitter {
                 this.__resetStats();
             }
 
+            // if returned 200 instead of 206, server ignored range request, reset and start over
+            if (this.__isResumed && response.statusCode === 200) {
+                this.__isResumed = false;
+                this.__total = parseInt(response.headers['content-length']) || null;
+                this.__resetStats();
+            }
+
             // Handle Redirects
             if (this.__isRequireRedirect(response)) {
+
+                this.__redirectCount++;
+                if (this.__redirectCount > this.__opts.maxRedirects) {
+                    const err = new Error('Too many redirects');
+                    this.__setState(this.__states.FAILED);
+                    this.emit('error', err);
+                    return reject(err);
+                }
+
                 const redirectedURL = /^https?:\/\//.test(response.headers.location)
                     ? response.headers.location
                     : new URL(response.headers.location, this.url).href;
@@ -675,10 +707,12 @@ export class DownloaderHelper extends EventEmitter {
      * @memberof DownloaderHelper
      */
     __isRequireRedirect(response) {
-        return (response.statusCode > 300 &&
-            response.statusCode < 400 &&
+        const redirectCodes = [301, 302, 303, 307, 308];
+        return (
+            redirectCodes.includes(response.statusCode) &&
             response.headers.hasOwnProperty('location') &&
-            response.headers.location);
+            response.headers.location
+        );
     }
 
     /**
@@ -701,7 +735,7 @@ export class DownloaderHelper extends EventEmitter {
                     if (isIncomplete && this.__isResumable && this.__opts.resumeOnIncomplete &&
                         this.__resumeRetryCount <= this.__opts.resumeOnIncompleteMaxRetry) {
                         this.__resumeRetryCount++;
-                        this.emit('warning', new Error('uncomplete download, retrying'));
+                        this.emit('warning', new Error('incomplete download, retrying'));
                         return this.resume();
                     }
 
@@ -912,12 +946,9 @@ export class DownloaderHelper extends EventEmitter {
             fileName = fileName.replace(/[/\\]/g, '');
 
         } else {
-
-            if (path.basename(new URL(this.requestURL).pathname).length > 0) {
-                fileName = path.basename(new URL(this.requestURL).pathname);
-            } else {
-                fileName = `${new URL(this.requestURL).hostname}.html`;
-            }
+            const parsedURL = new URL(this.requestURL);
+            const baseName = path.basename(parsedURL.pathname);
+            fileName = baseName.length > 0 ? baseName : `${parsedURL.hostname}.html`;
         }
 
         return (
@@ -1007,7 +1038,7 @@ export class DownloaderHelper extends EventEmitter {
      */
     __calculateStats(receivedBytes) {
         const currentTime = new Date();
-        const elaspsedTime = currentTime - this.__statsEstimate.time;
+        const elapsedTime = currentTime - this.__statsEstimate.time;
         const throttleElapseTime = currentTime - this.__statsEstimate.throttleTime;
         const total = this.__total || 0;
 
@@ -1019,7 +1050,7 @@ export class DownloaderHelper extends EventEmitter {
         this.__progress = total === 0 ? 0 : (this.__downloaded / total) * 100;
 
         // Calculate the speed every second or if finished
-        if (this.__downloaded === total || elaspsedTime > 1000) {
+        if (this.__downloaded === total || elapsedTime > 1000) {
             this.__statsEstimate.time = currentTime;
             this.__statsEstimate.bytes = this.__downloaded - this.__statsEstimate.prevBytes;
             this.__statsEstimate.prevBytes = this.__downloaded;
@@ -1064,6 +1095,11 @@ export class DownloaderHelper extends EventEmitter {
             method,
         };
 
+        // if auth 'user:pass@host'
+        if (urlParse.username || urlParse.password) {
+            options.auth = `${urlParse.username}:${urlParse.password}`;
+        }
+
         if (headers) {
             options['headers'] = headers;
         }
@@ -1103,7 +1139,7 @@ export class DownloaderHelper extends EventEmitter {
     __validate(url, destFolder) {
 
         if (typeof url !== 'string') {
-            throw new Error('URL should be an string');
+            throw new Error('URL should be a string');
         }
 
         if (url.trim() === '') {
@@ -1111,7 +1147,7 @@ export class DownloaderHelper extends EventEmitter {
         }
 
         if (typeof destFolder !== 'string') {
-            throw new Error('Destination Folder should be an string');
+            throw new Error('Destination Folder should be a string');
         }
 
         if (destFolder.trim() === '') {
@@ -1148,11 +1184,11 @@ export class DownloaderHelper extends EventEmitter {
 
         if (url.indexOf('https://') > -1) {
             this.__protocol = https;
-            defaultOpts.agent = new https.Agent({ keepAlive: false });
+            defaultOpts.agent = this.__defaultHttpsAgent;
             this.__reqOptions = Object.assign({}, defaultOpts, this.__opts.httpsRequestOptions);
         } else {
             this.__protocol = http;
-            defaultOpts.agent = new http.Agent({ keepAlive: false });
+            defaultOpts.agent = this.__defaultHttpAgent;
             this.__reqOptions = Object.assign({}, defaultOpts, this.__opts.httpRequestOptions);
         }
 
@@ -1165,30 +1201,38 @@ export class DownloaderHelper extends EventEmitter {
      * @returns {String}
      * @memberof DownloaderHelper
      */
-    __uniqFileNameSync(path) {
-        if (typeof path !== 'string' || path === '') {
-            return path;
+    __uniqFileNameSync(_path) {
+        if (typeof _path !== 'string' || _path === '') {
+            return _path;
         }
 
         try {
             // if access fail, the file doesnt exist yet
-            fs.accessSync(path, fs.F_OK);
-            const pathInfo = path.match(/(.*)(\([0-9]+\))(\..*)$/);
-            let base = pathInfo ? pathInfo[1].trim() : path;
-            let suffix = pathInfo ? parseInt(pathInfo[2].replace(/\(|\)/, '')) : 0;
-            let ext = path.split('.').pop();
+            fs.accessSync(_path, fs.constants.F_OK);
+            const pathInfo = _path.match(/(.*)(\([0-9]+\))(\..*)$/);
+            let base, ext, suffix;
 
-            if (ext !== path && ext.length > 0) {
-                ext = '.' + ext;
-                base = base.replace(ext, '');
+            // already has a (number) pattern
+            if (pathInfo) {
+                base = pathInfo[1].trim();
+                ext = pathInfo[3];
+                suffix = parseInt(pathInfo[2].replace(/\(|\)/g, ''));
             } else {
-                ext = '';
+                // we find the first dot in the filename
+                const lastSlashIndex = _path.lastIndexOf(path.sep);
+                const fileNameStart = lastSlashIndex + 1;
+                const fileName = _path.substring(fileNameStart);
+                const firstDotIndex = fileName.indexOf('.');
+
+                ext = firstDotIndex > 0 ? fileName.substring(firstDotIndex) : '';
+                base = firstDotIndex > 0 ? _path.substring(0, fileNameStart + firstDotIndex) : _path;
+                suffix = 0;
             }
 
-            // generate a new path until it doesn't exist
+            // generate a new path with '(number + 1)' until it doesn't exist
             return this.__uniqFileNameSync(base + ' (' + (++suffix) + ')' + ext);
-        } catch (err) {
-            return path;
+        } catch (_err) {
+            return _path;
         }
     }
 
@@ -1216,7 +1260,7 @@ export class DownloaderHelper extends EventEmitter {
 
                         fs.unlink(this.__filePath, (_err) => {
                             if (_err) {
-                                this.emit('warning', err);
+                                this.emit('warning', _err);
                             }
                             resolve();
                         });

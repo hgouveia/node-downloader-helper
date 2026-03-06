@@ -70,6 +70,7 @@ these are the default values
     resumeIfFileExists: false, // it will resume if a file already exists and is not completed, you might want to set removeOnStop and removeOnFail to false. If you used pipe for compression it will produce corrupted files
     fileName: string|cb(fileName, filePath, contentType)|{name, ext}, // Custom filename when saved
     retry: false, // { maxRetries: number, delay: number in ms } or false to disable (default)
+    maxRedirects: 10, // maximum number of redirects (default: 10), if this number is reached will throw "Too many redirects"
     forceResume: false, // If the server does not return the "accept-ranges" header, can be force if it does support it
     removeOnStop: true, // remove the file when is stopped (default:true)
     removeOnFail: true, // remove the file when fail (default:true)

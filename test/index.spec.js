@@ -48,10 +48,10 @@ describe('DownloaderHelper', function () {
             }).to.not.throw();
         });
 
-        it('should fail if url is not an string', function () {
+        it('should fail if url is not a string', function () {
             expect(function () {
                 const dl = new DownloaderHelper(1234, __dirname);
-            }).to.throw('URL should be an string');
+            }).to.throw('URL should be a string');
         });
 
         it('should fail if url is empty', function () {
@@ -60,10 +60,10 @@ describe('DownloaderHelper', function () {
             }).to.throw("URL couldn't be empty");
         });
 
-        it('should fail if destination folder is not an string', function () {
+        it('should fail if destination folder is not a string', function () {
             expect(function () {
                 const dl = new DownloaderHelper(downloadURL, {});
-            }).to.throw('Destination Folder should be an string');
+            }).to.throw('Destination Folder should be a string');
         });
 
         it('should fail if destination folder is empty', function () {
@@ -113,6 +113,9 @@ describe('DownloaderHelper', function () {
             fileNameExt = 'zip';
         });
 
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
 
         it("should return the same file name when an empty string is passed in the 'fileName' opts", function () {
             const dl = new DownloaderHelper(downloadURL, __dirname, {
@@ -237,6 +240,10 @@ describe('DownloaderHelper', function () {
             fs.statSync.mockReturnValue({ isDirectory: () => true });
         });
 
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
+
         it("should append '.html' to a file if there is no 'content-disposition' header and no 'path'", function () {
             const newFileName = 'google.html';
             const dl = new DownloaderHelper('https://google.com/', __dirname, {
@@ -330,9 +337,18 @@ describe('DownloaderHelper', function () {
             });
 
         });
-    })
+    });
 
     describe('__initProtocol', function () {
+        beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+        });
+
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
+
         it("protocol should be http", function () {
             const dl = new DownloaderHelper(downloadURL.replace('https:', 'http:'), __dirname);
             expect(dl.__protocol.STATUS_CODES).to.be.not.undefined;
@@ -370,6 +386,13 @@ describe('DownloaderHelper', function () {
     });
 
     describe('download', function () {
+        beforeEach(function () {
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+        });
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
         it("if the content-length is not present when the download starts, it should return null as totalSize", function (done) {
             fs.createWriteStream.mockReturnValue({ on: jest.fn() });
             https.request.mockImplementation(getRequestFn({
@@ -422,5 +445,98 @@ describe('DownloaderHelper', function () {
                 });
             dl.start();
         })
+    });
+
+    describe('__uniqFileNameSync', function () {
+        let dl;
+        beforeEach(function () {
+            fs.accessSync.mockClear();
+            fs.existsSync.mockReturnValue(true);
+            fs.statSync.mockReturnValue({ isDirectory: () => true });
+
+            dl = new DownloaderHelper(downloadURL, __dirname);
+        });
+        afterEach(() => {
+            jest.resetAllMocks();
+        });
+
+        it('should return unique filename with single extension when file exists', function () {
+            fs.accessSync.mockImplementation((_path) => {
+                if (_path.includes('(1)')) {
+                    throw new Error('File does not exist');
+                }
+                return undefined;
+            });
+
+            const result = dl.__uniqFileNameSync('/path/myfile.txt');
+            expect(result).to.equal('/path/myfile (1).txt');
+        });
+
+        it('should return unique filename with double extension (.tar.gz) when file exists', function () {
+            fs.accessSync.mockImplementation((path) => {
+                if (path.includes('(2)')) {
+                    throw new Error('File does not exist');
+                }
+                return undefined;
+            });
+
+            const result = dl.__uniqFileNameSync('/path/myfile.tar.gz');
+            expect(result).to.equal('/path/myfile (2).tar.gz');
+        });
+
+        it('should return unique filename with triple extension when file exists', function () {
+            fs.accessSync.mockImplementation((path) => {
+                if (path.includes('(3)')) {
+                    throw new Error('File does not exist');
+                }
+                return undefined;
+            });
+
+            const result = dl.__uniqFileNameSync('/path/archive.tar.gz.bak');
+            expect(result).to.equal('/path/archive (3).tar.gz.bak');
+        });
+
+        it('should return original path when file does not exist', function () {
+            fs.accessSync.mockImplementation(() => {
+                throw new Error('File does not exist');
+            });
+
+            const result = dl.__uniqFileNameSync('/path/newfile.txt');
+            expect(result).to.equal('/path/newfile.txt');
+        });
+
+        it('should return original path when input is empty string', function () {
+            const result = dl.__uniqFileNameSync('');
+            expect(result).to.equal('');
+        });
+
+        it('should return original path when input is not a string', function () {
+            const result = dl.__uniqFileNameSync(null);
+            expect(result).to.be.null;
+        });
+
+        it('should handle file with no extension', function () {
+            fs.accessSync.mockImplementation((path) => {
+                if (path.includes('(1)')) {
+                    throw new Error('File does not exist');
+                }
+                return undefined;
+            });
+
+            const result = dl.__uniqFileNameSync('/path/README');
+            expect(result).to.equal('/path/README (1)');
+        });
+
+        it('should correctly parse and increment counter from existing filename', function () {
+            fs.accessSync.mockImplementation((path) => {
+                if (path.includes('(2)')) {
+                    throw new Error('File does not exist');
+                }
+                return undefined;
+            });
+
+            const result = dl.__uniqFileNameSync('/path/myfile (1).tar.gz');
+            expect(result).to.equal('/path/myfile (2).tar.gz');
+        });
     });
 });

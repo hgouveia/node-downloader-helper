@@ -1,5 +1,5 @@
 environment:
-  nodejs_version: "14"
+  nodejs_version: "24"
 
 # Install scripts. (runs after repo cloning)
 install:
@@ -18,4 +18,4 @@ test_script:
   - npm test
 
 # Don't actually build.
-build: off
+build: false
