@@ -1,5 +1,5 @@
 {
-  "name": "node-downloader-helper",
+  "name": "@hgouveia/node-downloader-helper",
   "version": "2.1.11",
   "description": "A simple http/s file downloader for node.js",
   "main": "./dist/index.js",
